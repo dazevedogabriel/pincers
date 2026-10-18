@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Pincers — link capturado</title>
+<link rel="stylesheet" href="popup.css">
+<link rel="stylesheet" href="captured.css">
+</head>
+<body class="captured">
+  <header>
+    <img src="icons/icon48.png" alt="" width="28" height="24">
+    <div>
+      <div class="title" id="title">Link capturado</div>
+      <div class="sub" id="sub">Cole no Pincers para baixar</div>
+    </div>
+  </header>
+
+  <section class="status ok" id="copied" hidden><span class="dot"></span><span id="copied-text">Link copiado — cole no Pincers (Ctrl+V)</span></section>
+  <section class="status bad" id="copy-failed" hidden><span class="dot"></span><span>Não deu para copiar sozinho: clique em “Copiar”.</span></section>
+
+  <ul class="links" id="links"></ul>
+
+  <footer>
+    <button id="copy-all" class="primary">Copiar</button>
+    <button id="browser" hidden>Baixar no navegador</button>
+    <button id="close">Fechar</button>
+  </footer>
+  <script src="captured.js"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Pincers</title>
+<link rel="stylesheet" href="popup.css">
+<link rel="stylesheet" href="captured.css">
+</head>
+<body>
+  <header>
+    <img src="icons/icon48.png" alt="" width="28" height="24">
+    <div>
+      <div class="title">Pincers</div>
+      <div class="sub">Captura os downloads e copia o link para você colar no Pincers</div>
+    </div>
+  </header>
+
+  <label class="row toggle">
+    <span>
+      <span class="label">Capturar downloads automaticamente</span>
+      <span class="hint">Segure <kbd>Alt</kbd> ao clicar num link para deixar com o navegador</span>
+    </span>
+    <input type="checkbox" id="enabled">
+  </label>
+
+  <div class="field">
+    <span class="label">Últimos links capturados</span>
+    <ul class="links" id="history"></ul>
+    <span class="hint" id="history-empty">Nenhum ainda. Baixe um arquivo ou clique com o botão direito num link.</span>
+  </div>
+
+  <label class="field">
+    <span class="label">Tipos de arquivo capturados</span>
+    <textarea id="extensions" rows="3" spellcheck="false"></textarea>
+  </label>
+
+  <label class="field">
+    <span class="label">Nunca capturar destes sites <span class="hint">(um por linha)</span></span>
+    <textarea id="excluded" rows="2" spellcheck="false" placeholder="exemplo.com"></textarea>
+  </label>
+
+  <footer>
+    <button id="reset">Restaurar tipos</button>
+  </footer>
+
+  <details>
+    <summary class="hint">Diagnóstico</summary>
+    <pre id="log"></pre>
+  </details>
+  <script src="popup.js"></script>
+</body>
+</html>
