@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pincers — English
+
+  To add a translation: copy this file, change `code` and `name` on
+  <language>, translate only the text between the tags (never the `key`) and
+  save it as <code>.xml in %APPDATA%\Pincers\locales (or in a "locales"
+  folder next to pincers.exe). The language shows up in Options → Language
+  the next time Pincers starts.
+
+  {name} is replaced by a value when the text is shown: keep it.
+  <plural>: <one> when the number is 1, <other> otherwise.
+-->
+<language code="en" name="English">
+
+  <!-- Sidebar -->
+  <string key="sidebar.downloads">Downloads</string>
+  <string key="sidebar.total_speed">Total speed</string>
+  <plural key="sidebar.active_connections"><one>{n} active connection</one><other>{n} active connections</other></plural>
+  <string key="sidebar.options">Options</string>
+
+  <!-- Filters -->
+  <string key="filter.all">All</string>
+  <string key="filter.running">Downloading</string>
+  <string key="filter.paused">Paused</string>
+  <string key="filter.done">Completed</string>
+  <string key="filter.failed">Failed</string>
+
+  <!-- Status of a download -->
+  <string key="status.running">Downloading</string>
+  <string key="status.paused">Paused</string>
+  <string key="status.done">Completed</string>
+  <string key="status.failed">Failed</string>
+
+  <!-- URL bar -->
+  <string key="bar.url_hint">Paste the file URL and press Enter…</string>
+  <string key="bar.parts">Parts</string>
+  <plural key="bar.parts_tip"><one>Up to {n} connection per download</one><other>Up to {n} connections per download</other></plural>
+  <string key="bar.download">Download</string>
+
+  <!-- Download list -->
+  <plural key="list.count"><one>{n} item</one><other>{n} items</other></plural>
+  <string key="list.pause_all">Pause all</string>
+  <string key="list.resume_all">Resume all</string>
+  <string key="list.empty">Nothing here yet.</string>
+  <string key="col.file">File</string>
+  <string key="col.parts">Parts</string>
+  <string key="col.speed">Speed</string>
+  <string key="col.remaining">Remaining</string>
+  <string key="col.status">Status</string>
+  <plural key="item.parts"><one>{n} part</one><other>{n} parts</other></plural>
+  <plural key="item.parts_active"><one>{active}/{n} part active</one><other>{active}/{n} parts active</other></plural>
+
+  <!-- Actions -->
+  <string key="action.pause">Pause</string>
+  <string key="action.resume">Resume</string>
+  <string key="action.retry">Try again</string>
+  <string key="action.open_file">Open file</string>
+  <string key="action.open_folder">Open folder</string>
+  <string key="action.remove_tip">Remove from the list (files stay on disk)</string>
+
+  <!-- Detail panel -->
+  <string key="detail.copy_url_tip">Click to copy the URL</string>
+  <string key="stat.downloaded">Downloaded</string>
+  <string key="stat.progress">Progress</string>
+  <string key="stat.speed">Speed</string>
+  <string key="stat.remaining">Remaining</string>
+  <string key="map.title">File map</string>
+  <string key="legend.downloading">Downloading</string>
+  <string key="legend.done">Completed</string>
+  <string key="legend.pending">Pending</string>
+  <string key="chart.speed">Speed</string>
+  <string key="parts.col_n">#</string>
+  <string key="parts.col_range">Range</string>
+  <string key="parts.col_downloaded">Downloaded</string>
+  <string key="parts.col_state">State</string>
+  <string key="part.error">Error</string>
+  <string key="part.done">Done</string>
+  <string key="part.active">Active</string>
+  <string key="part.waiting">Waiting</string>
+  <string key="part.paused">Paused</string>
+  <string key="part.stopped">Stopped</string>
+
+  <!-- Dates: format per https://docs.rs/chrono/latest/chrono/format/strftime -->
+  <string key="time.today">Today, {time}</string>
+  <string key="time.yesterday">Yesterday, {time}</string>
+  <string key="time.date_format">%Y-%m-%d %H:%M</string>
+
+  <!-- Options window -->
+  <string key="options.title">Options</string>
+  <string key="options.language">Language</string>
+  <string key="options.language_auto">Automatic ({language})</string>
+  <string key="options.connections">Connections per download</string>
+  <string key="options.connections_tip">IDM uses 8. Some servers block too many connections.</string>
+  <string key="options.save_to">Save to</string>
+  <string key="options.browse">Browse…</string>
+  <string key="options.limit">Limit speed</string>
+  <string key="options.map">File map</string>
+  <string key="options.map_grid">Grid</string>
+  <string key="options.map_bars">Bars</string>
+  <string key="options.note">Connections, folder and limit apply to downloads started or resumed after the change.</string>
+  <string key="window.open_failed">could not open the window: {error}</string>
+
+  <!-- Download engine messages -->
+  <string key="engine.connecting">Connecting…</string>
+  <string key="engine.downloading">Downloading with up to {n} connections</string>
+  <string key="engine.done">Download complete</string>
+  <string key="engine.paused">Paused</string>
+  <string key="engine.corrupted">Inconsistent data: restarting with 1 connection</string>
+  <string key="engine.conn_failed">Connection {id} failed: {error}</string>
+  <string key="engine.server_limits">The server limits connections: using {n}</string>
+  <string key="engine.single">The server does not support segmenting: 1 connection</string>
+
+  <!-- Errors -->
+  <string key="error.connect">could not connect to {url}</string>
+  <string key="error.status">the server answered {status}</string>
+  <string key="error.range_status">the server answered {status} to a range request</string>
+  <string key="error.server_busy">the server refused more connections ({status})</string>
+  <string key="error.create_file">could not create {path}</string>
+  <string key="error.paused">download paused</string>
+  <string key="error.all_failed">all connections failed</string>
+  <string key="error.timeout">timed out</string>
+  <string key="error.closed">connection closed by the server</string>
+  <string key="error.cancelled_no_resume">download cancelled (this server cannot resume)</string>
+  <string key="error.incomplete">incomplete download: {done} of {size} bytes</string>
+
+  <!-- Talking to the browser and to another Pincers window -->
+  <string key="bridge.not_open">Pincers is not open</string>
+  <string key="bridge.bad_reply">unexpected reply from Pincers: {reply}</string>
+  <string key="bridge.no_start">Pincers did not open in time</string>
+  <string key="bridge.cannot_start">could not start {path}</string>
+  <string key="bridge.bad_token">invalid token</string>
+  <string key="bridge.too_big">message too large: {len} bytes</string>
+  <string key="bridge.bad_message">invalid message: {error}</string>
+  <string key="bridge.reg_failed">could not write {key}</string>
+
+  <!-- Command line -->
+  <string key="cli.about">Pincers: downloads files in several parts at once, like IDM. Without a URL (or with `gui`), opens the window.</string>
+  <string key="cli.url">File URL (leave out, or use `gui`, to open the window; `register` connects Pincers to the browser extensions)</string>
+  <string key="cli.connections">Maximum number of simultaneous connections (IDM uses 8)</string>
+  <string key="cli.output">Destination folder</string>
+  <string key="cli.limit">Speed limit, e.g. 500K, 2M</string>
+  <string key="cli.min_segment">Smallest part size, in bytes (IDM: 11680)</string>
+  <string key="cli.progress">{speed}/s  ETA {eta}  {n} connections</string>
+  <string key="cli.done">✔ {path}  ({size} in {secs}s, average {speed}/s)</string>
+  <string key="cli.paused">⏸ Paused. Run the same command again to resume. ({error})</string>
+  <string key="cli.bad_limit">invalid limit: {value}</string>
+  <string key="cli.registered">Done: the Chrome/Opera/Firefox extensions can now talk to Pincers.</string>
+</language>

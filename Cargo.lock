@@ -3146,6 +3146,7 @@ dependencies = [
  "reqwest",
  "resvg",
  "rfd",
+ "roxmltree 0.20.0",
  "serde",
  "serde_json",
  "tokio",

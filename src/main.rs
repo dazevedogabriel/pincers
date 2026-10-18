@@ -5,12 +5,13 @@ mod bridge;
 mod chunks;
 mod engine;
 mod gui;
+mod i18n;
 mod limiter;
 mod probe;
 mod state;
 
 use anyhow::{Result, bail};
-use clap::Parser;
+use clap::{CommandFactory, FromArgMatches, Parser};
 use engine::{Config, Progress};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::path::PathBuf;
@@ -19,46 +20,80 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tokio::sync::watch;
 
-/// 🦀 Pincers: baixa arquivos em vários segmentos paralelos, como o IDM.
-/// Sem URL (ou com `gui`), abre a interface gráfica.
+// The help texts come from the translations (see `parse_args`).
 #[derive(Parser, Debug)]
-#[command(version, about)]
+#[command(version)]
 struct Args {
-    /// URL do arquivo (omita, ou use `gui`, para abrir a janela;
-    /// `register` liga o Pincers às extensões do navegador)
+    // Explicit positions: `mut_arg` (used to translate the help) re-inserts
+    // the argument last, which would otherwise make `url` the second positional.
+    #[arg(index = 1)]
     url: Option<String>,
-    /// URLs extras para adicionar à janela (`pincers gui <URL>...`)
-    #[arg(hide = true)]
+    /// Extra URLs for the window (`pincers gui <URL>...`).
+    #[arg(index = 2, hide = true)]
     more: Vec<String>,
-    /// Número máximo de conexões simultâneas (IDM usa 8 por padrão)
     #[arg(short, long, default_value_t = 8)]
     connections: usize,
-    /// Pasta de destino
     #[arg(short, long, default_value = ".")]
     output: PathBuf,
-    /// Limite de velocidade, ex.: 500K, 2M
     #[arg(short, long)]
     limit: Option<String>,
-    /// Tamanho mínimo de segmento em bytes (IDM: 11680)
     #[arg(long, default_value_t = chunks::MIN_SEGMENT)]
     min_segment: u64,
+}
+
+/// Parses the command line with `--help` in the user's language.
+fn parse_args() -> Args {
+    Args::from_arg_matches(&command().get_matches()).unwrap_or_else(|e| e.exit())
+}
+
+fn command() -> clap::Command {
+    Args::command()
+        .about(tr!("cli.about"))
+        .mut_arg("url", |a| a.help(tr!("cli.url")))
+        .mut_arg("connections", |a| a.help(tr!("cli.connections")))
+        .mut_arg("output", |a| a.help(tr!("cli.output")))
+        .mut_arg("limit", |a| a.help(tr!("cli.limit")))
+        .mut_arg("min_segment", |a| a.help(tr!("cli.min_segment")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(argv: &[&str]) -> Args {
+        Args::from_arg_matches(&command().try_get_matches_from(argv).unwrap()).unwrap()
+    }
+
+    /// Translating the help must not move the positionals around.
+    #[test]
+    fn gui_with_urls_opens_the_window() {
+        let a = parse(&["pincers", "gui", "https://a/x.zip", "https://b/y.iso"]);
+        assert_eq!(a.url.as_deref(), Some("gui"));
+        assert_eq!(a.more, ["https://a/x.zip", "https://b/y.iso"]);
+        let b = parse(&["pincers", "https://a/x.zip", "-c", "4"]);
+        assert_eq!(b.url.as_deref(), Some("https://a/x.zip"));
+        assert_eq!(b.connections, 4);
+    }
 }
 
 fn main() -> Result<()> {
     // Started by the browser extension: speak native messaging on stdio.
     let raw: Vec<String> = std::env::args().collect();
     if bridge::is_native_host_invocation(&raw) {
+        i18n::set_language(gui::saved_language().as_deref());
         return bridge::run_native_host();
     }
 
-    let args = Args::parse();
+    // Same language as the window: the choice saved in Options, or the system's.
+    i18n::set_language(gui::saved_language().as_deref());
+    let args = parse_args();
     match args.url.as_deref() {
         #[cfg(windows)]
         Some("register") => {
             for key in bridge::register(bridge::CHROME_EXTENSION_ID, bridge::FIREFOX_ADDON_ID)? {
                 println!("✔ {key}");
             }
-            println!("Pronto: as extensões do Chrome/Opera/Firefox já conseguem falar com o Pincers.");
+            println!("{}", tr!("cli.registered"));
             Ok(())
         }
         None => {
@@ -120,16 +155,19 @@ async fn cli(url: String, args: Args) -> Result<()> {
             let secs = started.elapsed().as_secs_f64();
             let size = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
             println!(
-                "✔ {}  ({} em {:.1}s, média {}/s)",
-                path.display(),
-                human(size as f64),
-                secs,
-                human(size as f64 / secs.max(0.001))
+                "{}",
+                tr!(
+                    "cli.done",
+                    path = path.display(),
+                    size = human(size as f64),
+                    secs = format!("{secs:.1}"),
+                    speed = human(size as f64 / secs.max(0.001)),
+                )
             );
             Ok(())
         }
         Err(e) if cancel.load(Ordering::Relaxed) => {
-            println!("⏸ Pausado. Rode o mesmo comando para retomar. ({e})");
+            println!("{}", tr!("cli.paused", error = e));
             Ok(())
         }
         Err(e) => Err(e),
@@ -154,8 +192,8 @@ async fn render(mut rx: watch::Receiver<Progress>) {
             Some(s) if p.speed > 0.0 => format_eta((s.saturating_sub(p.downloaded)) as f64 / p.speed),
             _ => "--".into(),
         };
-        bar.set_prefix(format!("{}/s  ETA {eta}  {} conexões", human(p.speed), p.connections));
-        bar.set_message(format!("{}  [{}]\n{}", p.file_name, p.status, segment_map(&p, 60)));
+        bar.set_prefix(tr!("cli.progress", speed = human(p.speed), eta = eta, n = p.connections));
+        bar.set_message(format!("{}  [{}]\n{}", p.file_name, p.status.text(), segment_map(&p, 60)));
         if p.finished || matches!(changed, Ok(Err(_))) {
             bar.finish_and_clear();
             return;
@@ -203,7 +241,7 @@ pub(crate) fn parse_size(s: &str) -> Result<u64> {
     };
     match num.parse::<f64>() {
         Ok(n) if n > 0.0 => Ok((n * mult) as u64),
-        _ => bail!("limite inválido: {s}"),
+        _ => bail!(tr!("cli.bad_limit", value = s)),
     }
 }
 

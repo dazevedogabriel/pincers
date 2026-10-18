@@ -4,6 +4,7 @@
 use super::theme::*;
 use super::{Filter, Item, MapView, PincersApp, Status, open_folder};
 use crate::engine::SegmentView;
+use crate::{tr, tr_n};
 use eframe::egui::{
     self, Align2, Color32, CornerRadius, Id, Margin, Painter, Rect, Response, RichText, Sense, Stroke,
     StrokeKind, Ui, pos2, vec2,
@@ -89,16 +90,16 @@ pub fn sidebar(app: &mut PincersApp, ui: &mut Ui) {
     let left = full.left() + 10.0;
     let width = full.width() - 20.0;
 
-    caps(&p, pos2(left + 10.0, full.top() + 16.0 + 7.0), "Downloads", 11.0, DIM);
+    caps(&p, pos2(left + 10.0, full.top() + 16.0 + 7.0), &tr!("sidebar.downloads"), 11.0, DIM);
     let mut y = full.top() + 16.0 + 14.0 + 8.0;
     for f in Filter::ALL {
         let r = Rect::from_min_size(pos2(left, y), vec2(width, 32.0));
-        let resp = ui.interact(r, Id::unique(("filter", f.label())), Sense::click());
+        let resp = ui.interact(r, Id::unique(("filter", f.key())), Sense::click());
         let on = app.filter == f;
         let bg = if on { RAISED } else if resp.hovered() { HOVER } else { Color32::TRANSPARENT };
         p.rect_filled(r, CornerRadius::same(7), bg);
         p.rect_filled(Rect::from_center_size(pos2(r.left() + 13.0, r.center().y), vec2(6.0, 6.0)), CornerRadius::same(2), f.dot());
-        text(&p, pos2(r.left() + 26.0, r.center().y), Align2::LEFT_CENTER, f.label(), sans(13.0, W::Regular), if on { TEXT } else { MUTED }, 140.0);
+        text(&p, pos2(r.left() + 26.0, r.center().y), Align2::LEFT_CENTER, &f.label(), sans(13.0, W::Regular), if on { TEXT } else { MUTED }, 140.0);
         let count = app.items.iter().filter(|i| f.matches(&i.status)).count();
         text(&p, pos2(r.right() - 10.0, r.center().y), Align2::RIGHT_CENTER, &count.to_string(), mono(11.0, W::Regular), DIM, 40.0);
         if resp.clicked() {
@@ -114,21 +115,21 @@ pub fn sidebar(app: &mut PincersApp, ui: &mut Ui) {
     p.rect(card, CornerRadius::same(10), PANEL, Stroke::new(1.0, LINE), StrokeKind::Inside);
     let cx = card.left() + 12.0;
     let mut cy = card.top() + 12.0;
-    text(&p, pos2(cx, cy + 7.0), Align2::LEFT_CENTER, "Velocidade total", sans(11.0, W::Regular), MUTED, 180.0);
+    text(&p, pos2(cx, cy + 7.0), Align2::LEFT_CENTER, &tr!("sidebar.total_speed"), sans(11.0, W::Regular), MUTED, 180.0);
     cy += 14.0 + 10.0;
     text(&p, pos2(cx, cy + 12.0), Align2::LEFT_CENTER, &format!("{}/s", size(app.total_speed())), mono(20.0, W::Medium), TEXT, 180.0);
     cy += 24.0 + 10.0;
     let hist = Rect::from_min_size(pos2(cx, cy), vec2(card.width() - 24.0, 28.0));
     bars(&p, hist, app.total_hist.iter().copied().collect(), 32, 0.03, tint(ACCENT, 0.75));
     cy += 28.0 + 10.0;
-    text(&p, pos2(cx, cy + 7.0), Align2::LEFT_CENTER, &format!("{} conexões ativas", app.active_connections()), sans(11.0, W::Regular), DIM, 180.0);
+    text(&p, pos2(cx, cy + 7.0), Align2::LEFT_CENTER, &tr_n!("sidebar.active_connections", app.active_connections()), sans(11.0, W::Regular), DIM, 180.0);
 
     let resp = ui.interact(opt, Id::unique("opt-row"), Sense::click());
     let h = resp.hovered() || app.show_settings;
     p.rect_filled(opt, CornerRadius::same(7), if h { HOVER } else { Color32::TRANSPARENT });
     let c = if h { TEXT } else { MUTED };
     icon_gear(&p, Rect::from_center_size(pos2(opt.left() + 17.5, opt.center().y), vec2(15.0, 15.0)), c);
-    text(&p, pos2(opt.left() + 35.0, opt.center().y), Align2::LEFT_CENTER, "Opções", sans(13.0, W::Regular), c, 120.0);
+    text(&p, pos2(opt.left() + 35.0, opt.center().y), Align2::LEFT_CENTER, &tr!("sidebar.options"), sans(13.0, W::Regular), c, 120.0);
     if resp.clicked() {
         app.show_settings = !app.show_settings;
     }
@@ -192,10 +193,12 @@ pub fn main(app: &mut PincersApp, ui: &mut Ui, narrow: bool) {
     p.hline(bar.x_range(), bar.bottom() - 0.5, Stroke::new(1.0, LINE));
     let cy = bar.center().y;
     let btn_font = sans(13.0, W::Semi);
-    let btn_w = 16.0 + 14.0 + 8.0 + label_width(ui, "Baixar", btn_font.clone()) + 16.0;
+    let download_label = tr!("bar.download");
+    let btn_w = 16.0 + 14.0 + 8.0 + label_width(ui, &download_label, btn_font.clone()) + 16.0;
     let btn = Rect::from_min_size(pos2(bar.right() - 20.0 - btn_w, cy - 20.0), vec2(btn_w, 40.0));
     let opts = [4usize, 8, 16, 32];
-    let parts_label_w = label_width(ui, "Partes", sans(11.0, W::Regular)) + 12.0;
+    let parts_label = tr!("bar.parts");
+    let parts_label_w = label_width(ui, &parts_label, sans(11.0, W::Regular)) + 12.0;
     let parts_w = 3.0 + parts_label_w + opts.len() as f32 * 28.0 + (opts.len() as f32 - 1.0) * 2.0 + 2.0 + 3.0;
     let parts = Rect::from_min_size(pos2(btn.left() - 10.0 - parts_w, cy - 20.0), vec2(parts_w, 40.0));
     let field = Rect::from_min_max(pos2(bar.left() + 20.0, cy - 20.0), pos2(parts.left() - 10.0, cy + 20.0));
@@ -212,13 +215,13 @@ pub fn main(app: &mut PincersApp, ui: &mut Ui, narrow: bool) {
             .frame(egui::Frame::NONE)
             .font(mono(12.5, W::Regular))
             .text_color(TEXT)
-            .hint_text(RichText::new("Cole a URL do arquivo e tecle Enter…").color(DIM).font(mono(12.5, W::Regular)))
+            .hint_text(RichText::new(tr!("bar.url_hint")).color(DIM).font(mono(12.5, W::Regular)))
             .align(egui::Align2::LEFT_CENTER),
     );
     let enter = edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
 
     p.rect(parts, CornerRadius::same(7), INPUT, Stroke::new(1.0, TRACK), StrokeKind::Inside);
-    text(&p, pos2(parts.left() + 3.0 + 6.0, cy), Align2::LEFT_CENTER, "Partes", sans(11.0, W::Regular), DIM, 80.0);
+    text(&p, pos2(parts.left() + 3.0 + 6.0, cy), Align2::LEFT_CENTER, &parts_label, sans(11.0, W::Regular), DIM, 80.0);
     let mut x = parts.left() + 3.0 + parts_label_w;
     for n in opts {
         let r = Rect::from_min_size(pos2(x, cy - 12.0), vec2(28.0, 24.0));
@@ -233,11 +236,11 @@ pub fn main(app: &mut PincersApp, ui: &mut Ui, narrow: bool) {
             app.settings.connections = n;
             app.mark_dirty();
         }
-        resp.on_hover_text(format!("Até {n} conexões por download"));
+        resp.on_hover_text(tr_n!("bar.parts_tip", n));
         x += 30.0;
     }
 
-    let clicked = button(ui, btn, "baixar", "Baixar", Some(icon_download), Btn::Accent, btn_font).clicked();
+    let clicked = button(ui, btn, "baixar", &download_label, Some(icon_download), Btn::Accent, btn_font).clicked();
     if clicked || enter {
         let url = std::mem::take(&mut app.url_input);
         app.add_url(url, &ctx);
@@ -250,25 +253,26 @@ pub fn main(app: &mut PincersApp, ui: &mut Ui, narrow: bool) {
     let tb = Rect::from_min_size(pos2(full.left(), bar.bottom()), vec2(full.width(), 54.0));
     let ty = tb.top() + 14.0 + 15.0;
     let list: Vec<u64> = app.items.iter().filter(|i| app.filter.matches(&i.status)).map(|i| i.id).collect();
-    let title = text(&p, pos2(tb.left() + 20.0, ty), Align2::LEFT_CENTER, app.filter.label(), sans(15.0, W::Semi), TEXT, 200.0);
-    let count = format!("{} {}", list.len(), if list.len() == 1 { "item" } else { "itens" });
+    let title = text(&p, pos2(tb.left() + 20.0, ty), Align2::LEFT_CENTER, &app.filter.label(), sans(15.0, W::Semi), TEXT, 200.0);
+    let count = tr_n!("list.count", list.len());
     text(&p, pos2(title.right() + 10.0, ty + 1.0), Align2::LEFT_CENTER, &count, sans(12.0, W::Regular), DIM, 100.0);
 
     let f12 = sans(12.0, W::Regular);
-    let rw = 12.0 + 18.0 + label_width(ui, "Retomar todos", f12.clone()) + 12.0;
-    let pw = 12.0 + 18.0 + label_width(ui, "Pausar todos", f12.clone()) + 12.0;
+    let (resume_label, pause_label) = (tr!("list.resume_all"), tr!("list.pause_all"));
+    let rw = 12.0 + 18.0 + label_width(ui, &resume_label, f12.clone()) + 12.0;
+    let pw = 12.0 + 18.0 + label_width(ui, &pause_label, f12.clone()) + 12.0;
     let resume = Rect::from_min_size(pos2(tb.right() - 20.0 - rw, ty - 15.0), vec2(rw, 30.0));
     let pause = Rect::from_min_size(pos2(resume.left() - 6.0 - pw, ty - 15.0), vec2(pw, 30.0));
-    if button(ui, pause, "pause-all", "Pausar todos", Some(icon_pause), Btn::Outline, f12.clone()).clicked() {
+    if button(ui, pause, "pause-all", &pause_label, Some(icon_pause), Btn::Outline, f12.clone()).clicked() {
         app.pause_all();
     }
-    if button(ui, resume, "resume-all", "Retomar todos", Some(icon_play), Btn::Outline, f12.clone()).clicked() {
+    if button(ui, resume, "resume-all", &resume_label, Some(icon_play), Btn::Outline, f12.clone()).clicked() {
         app.resume_all(&ctx);
     }
     // Without the sidebar (narrow window) filters and options move here.
     if narrow {
         let gear = Rect::from_min_size(pos2(pause.left() - 6.0 - 30.0, ty - 15.0), vec2(30.0, 30.0));
-        if button(ui, gear, "gear", "", Some(icon_gear), Btn::Outline, f12.clone()).on_hover_text("Opções").clicked() {
+        if button(ui, gear, "gear", "", Some(icon_gear), Btn::Outline, f12.clone()).on_hover_text(tr!("sidebar.options")).clicked() {
             app.show_settings = !app.show_settings;
         }
         let combo = Rect::from_min_size(pos2(gear.left() - 6.0 - 130.0, ty - 13.0), vec2(130.0, 26.0));
@@ -291,11 +295,11 @@ pub fn main(app: &mut PincersApp, ui: &mut Ui, narrow: bool) {
     let stats = full.width() >= 700.0;
     let cols = columns(full.left() + 32.0, full.width() - 32.0 - 20.0, stats);
     let hy = tb.bottom() + 6.0;
-    let mut heads = vec![("Arquivo", false), ("Partes", false)];
+    let mut heads = vec![(tr!("col.file"), false), (tr!("col.parts"), false)];
     if stats {
-        heads.extend([("Velocidade", true), ("Restante", true)]);
+        heads.extend([(tr!("col.speed"), true), (tr!("col.remaining"), true)]);
     }
-    heads.push(("Status", false));
+    heads.push((tr!("col.status"), false));
     for ((label, right), (x, w)) in heads.into_iter().zip(cols.x.iter()) {
         let g = line(&p, &label.to_uppercase(), sans(11.0, W::Regular), DIM, f32::INFINITY, 0.66);
         let gx = if right { x + w - g.size().x } else { *x };
@@ -315,7 +319,7 @@ pub fn main(app: &mut PincersApp, ui: &mut Ui, narrow: bool) {
                     ui.add(egui::Image::from_bytes("bytes://logo.svg", super::LOGO_SVG).fit_to_exact_size(vec2(96.0, 80.0)).tint(tint(Color32::WHITE, 0.35)));
                     ui.add_space(14.0);
                 }
-                ui.label(RichText::new("Nada por aqui.").font(sans(13.0, W::Regular)).color(DIM));
+                ui.label(RichText::new(tr!("list.empty")).font(sans(13.0, W::Regular)).color(DIM));
             });
             return;
         }
@@ -387,7 +391,7 @@ fn draw_row(ui: &mut Ui, row: Rect, cols: &Cols, item: &Item, selected: bool) ->
         c = 4;
     }
     let (xs, _) = cols.x[c];
-    let pill_rect = pill(&p, pos2(xs, cy), item.status.label(), item.status.color());
+    let pill_rect = pill(&p, pos2(xs, cy), &item.status.label(), item.status.color());
     if let Status::Failed(e) = &item.status {
         ui.interact(pill_rect, Id::unique(("pill", item.id)), Sense::hover()).on_hover_text(e);
     }
@@ -407,12 +411,12 @@ fn draw_row(ui: &mut Ui, row: Rect, cols: &Cols, item: &Item, selected: bool) ->
         Status::Done(_) => icon_folder(&p, Rect::from_center_size(ar.center(), vec2(13.0, 13.0)), fg),
         _ => icon_play(&p, ir, fg),
     }
-    let tip = match item.status {
-        Status::Running => "Pausar",
-        Status::Done(_) => "Abrir pasta",
-        Status::Failed(_) => "Tentar novamente",
-        Status::Paused => "Retomar",
-    };
+    let tip = tr!(match item.status {
+        Status::Running => "action.pause",
+        Status::Done(_) => "action.open_folder",
+        Status::Failed(_) => "action.retry",
+        Status::Paused => "action.resume",
+    });
     if act.on_hover_text(tip).clicked() {
         return Some(if matches!(item.status, Status::Done(_)) { "folder" } else { "toggle" });
     }
@@ -436,7 +440,7 @@ pub fn detail(app: &mut PincersApp, ui: &mut Ui) {
             let w = ui.available_width();
             let (r, _) = ui.allocate_exact_size(vec2(w, 22.0), Sense::hover());
             let p = ui.painter();
-            pill(p, pos2(r.left(), r.center().y), item.status.label(), item.status.color());
+            pill(p, pos2(r.left(), r.center().y), &item.status.label(), item.status.color());
             text(p, r.right_center(), Align2::RIGHT_CENTER, &when(item.added_ts), sans(11.0, W::Regular), DIM, 160.0);
             ui.add_space(12.0);
             // word-break: break-all
@@ -454,7 +458,7 @@ pub fn detail(app: &mut PincersApp, ui: &mut Ui) {
             let p = ui.painter();
             p.rect(r, CornerRadius::same(7), BG, Stroke::new(1.0, LINE), StrokeKind::Inside);
             text(p, pos2(r.left() + 10.0, r.center().y), Align2::LEFT_CENTER, &item.url, mono(11.0, W::Regular), MUTED, w - 20.0);
-            if resp.on_hover_text("Clique para copiar a URL").clicked() {
+            if resp.on_hover_text(tr!("detail.copy_url_tip")).clicked() {
                 ctx.copy_text(item.url.clone());
             }
             if let Status::Failed(e) = &item.status {
@@ -473,24 +477,25 @@ pub fn detail(app: &mut PincersApp, ui: &mut Ui) {
             let (r, _) = ui.allocate_exact_size(vec2(ui.available_width(), 34.0), Sense::hover());
             ui.painter().hline(full.x_range(), r.top() - 14.0, Stroke::new(1.0, LINE));
             let f = sans(12.5, W::Regular);
-            let folder_w = 24.0 + label_width(ui, "Abrir pasta", f.clone());
+            let folder_label = tr!("action.open_folder");
+            let folder_w = 24.0 + label_width(ui, &folder_label, f.clone());
             let trash = Rect::from_min_size(pos2(r.right() - 34.0, r.top()), vec2(34.0, 34.0));
             let folder = Rect::from_min_size(pos2(trash.left() - 8.0 - folder_w, r.top()), vec2(folder_w, 34.0));
             let primary = Rect::from_min_max(r.min, pos2(folder.left() - 8.0, r.bottom()));
-            let label = match item.status {
-                Status::Running => "Pausar",
-                Status::Paused => "Retomar",
-                Status::Failed(_) => "Tentar novamente",
-                Status::Done(_) => "Abrir arquivo",
-            };
-            if button(ui, primary, "primary", label, None, Btn::Raised, sans(12.5, W::Medium)).clicked() {
+            let label = tr!(match item.status {
+                Status::Running => "action.pause",
+                Status::Paused => "action.resume",
+                Status::Failed(_) => "action.retry",
+                Status::Done(_) => "action.open_file",
+            });
+            if button(ui, primary, "primary", &label, None, Btn::Raised, sans(12.5, W::Medium)).clicked() {
                 action = Some("toggle");
             }
-            if button(ui, folder, "folder", "Abrir pasta", None, Btn::Outline, f).clicked() {
+            if button(ui, folder, "folder", &folder_label, None, Btn::Outline, f).clicked() {
                 action = Some("folder");
             }
             if button(ui, trash, "trash", "", Some(icon_trash), Btn::Danger, sans(12.0, W::Regular))
-                .on_hover_text("Remover da lista (os arquivos ficam no disco)")
+                .on_hover_text(tr!("action.remove_tip"))
                 .clicked()
             {
                 action = Some("remove");
@@ -528,10 +533,10 @@ pub fn detail(app: &mut PincersApp, ui: &mut Ui) {
 /// background); values wrap like the mock-up's "5.80 GB / 5.80 GB".
 fn stats_grid(ui: &mut Ui, w: f32, item: &Item) {
     let cells = [
-        ("Baixado", item.size_label_full()),
-        ("Progresso", format!("{:.1}%", item.fraction() * 100.0)),
-        ("Velocidade", item.speed_label()),
-        ("Restante", item.eta_label()),
+        (tr!("stat.downloaded"), item.size_label_full()),
+        (tr!("stat.progress"), format!("{:.1}%", item.fraction() * 100.0)),
+        (tr!("stat.speed"), item.speed_label()),
+        (tr!("stat.remaining"), item.eta_label()),
     ];
     let cw = (w - 3.0) / 2.0;
     let galleys: Vec<_> = cells
@@ -580,7 +585,7 @@ impl Item {
 fn file_map(ui: &mut Ui, w: f32, item: &Item, view: MapView) {
     let (r, _) = ui.allocate_exact_size(vec2(w, 16.0), Sense::hover());
     let p = ui.painter();
-    text(p, r.left_center(), Align2::LEFT_CENTER, "Mapa do arquivo", sans(12.0, W::Medium), TEXT, w / 2.0);
+    text(p, r.left_center(), Align2::LEFT_CENTER, &tr!("map.title"), sans(12.0, W::Medium), TEXT, w / 2.0);
     text(p, r.right_center(), Align2::RIGHT_CENTER, &item.parts_label(), sans(11.0, W::Regular), DIM, w / 2.0);
     ui.add_space(10.0);
     let parts = item.parts();
@@ -616,16 +621,16 @@ fn file_map(ui: &mut Ui, w: f32, item: &Item, view: MapView) {
     let (r, _) = ui.allocate_exact_size(vec2(w, 14.0), Sense::hover());
     let p = ui.painter();
     let mut x = r.left();
-    for (c, l) in [(ACCENT, "Baixando"), (GREEN, "Concluído"), (TRACK, "Pendente")] {
+    for (c, l) in [(ACCENT, tr!("legend.downloading")), (GREEN, tr!("legend.done")), (TRACK, tr!("legend.pending"))] {
         p.rect_filled(Rect::from_min_size(pos2(x, r.center().y - 4.0), vec2(8.0, 8.0)), CornerRadius::same(2), c);
-        let t = text(p, pos2(x + 14.0, r.center().y), Align2::LEFT_CENTER, l, sans(11.0, W::Regular), MUTED, 100.0);
+        let t = text(p, pos2(x + 14.0, r.center().y), Align2::LEFT_CENTER, &l, sans(11.0, W::Regular), MUTED, 100.0);
         x = t.right() + 14.0;
     }
 }
 
 fn speed_history(ui: &mut Ui, w: f32, item: &Item) {
     let (r, _) = ui.allocate_exact_size(vec2(w, 16.0), Sense::hover());
-    text(ui.painter(), r.left_center(), Align2::LEFT_CENTER, "Velocidade", sans(12.0, W::Medium), TEXT, w);
+    text(ui.painter(), r.left_center(), Align2::LEFT_CENTER, &tr!("chart.speed"), sans(12.0, W::Medium), TEXT, w);
     ui.add_space(10.0);
     let (r, _) = ui.allocate_exact_size(vec2(w, 45.0), Sense::hover());
     let chart = Rect::from_min_max(r.min, pos2(r.right(), r.bottom() - 1.0));
@@ -643,7 +648,12 @@ fn parts_table(ui: &mut Ui, w: f32, item: &Item) {
     let (h, _) = ui.allocate_exact_size(vec2(w, 18.0), Sense::hover());
     let c = col(h.left());
     let p = ui.painter();
-    for (x, label, right) in [(c[0], "N.", false), (c[1], "Intervalo", false), (c[2] + 70.0, "Baixado", true), (c[3], "Estado", false)] {
+    for (x, label, right) in [
+        (c[0], tr!("parts.col_n"), false),
+        (c[1], tr!("parts.col_range"), false),
+        (c[2] + 70.0, tr!("parts.col_downloaded"), true),
+        (c[3], tr!("parts.col_state"), false),
+    ] {
         let g = line(p, &label.to_uppercase(), sans(10.5, W::Regular), DIM, f32::INFINITY, 0.63);
         let gx = if right { x - g.size().x } else { x };
         p.galley(pos2(gx, h.top()), g, DIM);
@@ -666,19 +676,19 @@ fn parts_table(ui: &mut Ui, w: f32, item: &Item) {
         p.rect_filled(Rect::from_min_size(track.min, vec2(track.width() * f, 3.0)), CornerRadius::same(2), color);
         let got = if matches!(item.status, Status::Done(_)) { len } else { got };
         text(p, pos2(c[2] + 70.0, r.center().y), Align2::RIGHT_CENTER, &size(got as f64), mono(11.0, W::Regular), TEXT2, 70.0);
-        let state = if s.failed {
-            "Erro"
+        let state = tr!(if s.failed {
+            "part.error"
         } else if s.pos >= s.end || matches!(item.status, Status::Done(_)) {
-            "Concluída"
+            "part.done"
         } else {
             match item.status {
-                Status::Running if s.active => "Ativa",
-                Status::Running => "Aguardando",
-                Status::Paused => "Pausada",
-                _ => "Parada",
+                Status::Running if s.active => "part.active",
+                Status::Running => "part.waiting",
+                Status::Paused => "part.paused",
+                _ => "part.stopped",
             }
-        };
-        text(p, pos2(c[3], r.center().y), Align2::LEFT_CENTER, state, sans(11.0, W::Regular), color, 64.0);
+        });
+        text(p, pos2(c[3], r.center().y), Align2::LEFT_CENTER, &state, sans(11.0, W::Regular), color, 64.0);
     }
 }
 
@@ -687,7 +697,8 @@ fn parts_table(ui: &mut Ui, w: f32, item: &Item) {
 pub fn settings_window(app: &mut PincersApp, ctx: &egui::Context) {
     let mut open = app.show_settings;
     let mut changed = false;
-    egui::Window::new(RichText::new("Opções").font(sans(14.0, W::Semi)))
+    egui::Window::new(RichText::new(tr!("options.title")).font(sans(14.0, W::Semi)))
+        .id(Id::unique("options-window"))
         .open(&mut open)
         .resizable(false)
         .collapsible(false)
@@ -701,23 +712,27 @@ pub fn settings_window(app: &mut PincersApp, ctx: &egui::Context) {
         )
         .show(ctx, |ui| {
             ui.spacing_mut().item_spacing = vec2(10.0, 12.0);
-            let label = |s: &str| RichText::new(s).font(sans(12.5, W::Regular)).color(MUTED);
+            let label = |key: &str| RichText::new(tr!(key)).font(sans(12.5, W::Regular)).color(MUTED);
             egui::Grid::new("opts").num_columns(2).spacing([16.0, 14.0]).show(ui, |ui| {
-                ui.label(label("Conexões por download"));
+                ui.label(label("options.language"));
+                changed |= language_picker(app, ui);
+                ui.end_row();
+
+                ui.label(label("options.connections"));
                 changed |= ui
                     .add(egui::Slider::new(&mut app.settings.connections, 1..=32))
-                    .on_hover_text("O IDM usa 8. Alguns servidores bloqueiam muitas conexões.")
+                    .on_hover_text(tr!("options.connections_tip"))
                     .changed();
                 ui.end_row();
 
-                ui.label(label("Salvar em"));
+                ui.label(label("options.save_to"));
                 ui.horizontal(|ui| {
                     let mut dir = app.settings.out_dir.display().to_string();
                     if ui.add(egui::TextEdit::singleline(&mut dir).font(mono(11.5, W::Regular)).desired_width(240.0)).changed() {
                         app.settings.out_dir = dir.into();
                         changed = true;
                     }
-                    if ui.button("Procurar…").clicked()
+                    if ui.button(tr!("options.browse")).clicked()
                         && let Some(d) = rfd::FileDialog::new().set_directory(&app.settings.out_dir).pick_folder()
                     {
                         app.settings.out_dir = d;
@@ -726,7 +741,7 @@ pub fn settings_window(app: &mut PincersApp, ctx: &egui::Context) {
                 });
                 ui.end_row();
 
-                changed |= ui.checkbox(&mut app.settings.limit_enabled, label("Limitar velocidade")).changed();
+                changed |= ui.checkbox(&mut app.settings.limit_enabled, label("options.limit")).changed();
                 changed |= ui
                     .add_enabled(
                         app.settings.limit_enabled,
@@ -735,16 +750,16 @@ pub fn settings_window(app: &mut PincersApp, ctx: &egui::Context) {
                     .changed();
                 ui.end_row();
 
-                ui.label(label("Mapa do arquivo"));
+                ui.label(label("options.map"));
                 ui.horizontal(|ui| {
-                    changed |= ui.selectable_value(&mut app.settings.map_view, MapView::Grade, "Grade").changed();
-                    changed |= ui.selectable_value(&mut app.settings.map_view, MapView::Barras, "Barras").changed();
+                    changed |= ui.selectable_value(&mut app.settings.map_view, MapView::Grade, tr!("options.map_grid")).changed();
+                    changed |= ui.selectable_value(&mut app.settings.map_view, MapView::Barras, tr!("options.map_bars")).changed();
                 });
                 ui.end_row();
             });
             ui.add_space(4.0);
             ui.label(
-                RichText::new("Conexões, pasta e limite valem para downloads iniciados ou retomados depois da mudança.")
+                RichText::new(tr!("options.note"))
                     .font(sans(11.0, W::Regular))
                     .color(DIM),
             );
@@ -753,4 +768,32 @@ pub fn settings_window(app: &mut PincersApp, ctx: &egui::Context) {
         app.mark_dirty();
     }
     app.show_settings = open;
+}
+
+/// Dropdown with "Automatic (system language)" plus every loaded language
+/// (built-in or dropped into a `locales` folder). Applies at once.
+fn language_picker(app: &mut PincersApp, ui: &mut Ui) -> bool {
+    let languages = crate::i18n::languages();
+    let name_of = |code: &str| languages.iter().find(|l| l.code == code).map(|l| l.name.clone()).unwrap_or_else(|| code.to_owned());
+    let auto = tr!("options.language_auto", language = name_of(&crate::i18n::system_choice()));
+    let selected_text = match &app.settings.language {
+        None => auto.clone(),
+        Some(code) => name_of(code),
+    };
+    let mut choice = app.settings.language.clone();
+    egui::ComboBox::from_id_salt("language")
+        .selected_text(selected_text)
+        .width(240.0)
+        .show_ui(ui, |ui| {
+            ui.selectable_value(&mut choice, None, auto);
+            for l in &languages {
+                ui.selectable_value(&mut choice, Some(l.code.clone()), l.name.clone());
+            }
+        });
+    if choice == app.settings.language {
+        return false;
+    }
+    app.settings.language = choice;
+    crate::i18n::set_language(app.settings.language.as_deref());
+    true
 }

@@ -20,6 +20,8 @@
 //! into one preallocated file, so there is no slow "assembling" phase.
 
 use crate::chunks::{ChunksList, MIN_SEGMENT, SegId, VERIFY_OVERLAP};
+use crate::i18n::Msg;
+use crate::tr;
 use crate::limiter::SpeedLimiter;
 use crate::probe::{RemoteInfo, probe};
 use crate::state::{SavedSegment, SavedState, part_path};
@@ -84,7 +86,8 @@ pub struct Progress {
     pub connections: usize,
     pub resumable: bool,
     pub segments: Vec<SegmentView>,
-    pub status: String,
+    /// Translated when shown, so a language change reaches running downloads.
+    pub status: Msg,
     pub finished: bool,
 }
 
@@ -126,7 +129,7 @@ struct ServerBusy(StatusCode);
 
 impl std::fmt::Display for ServerBusy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "o servidor recusou mais conexões ({})", self.0)
+        f.write_str(&tr!("error.server_busy", status = self.0))
     }
 }
 
@@ -141,7 +144,7 @@ pub async fn download(
     cancel: Arc<AtomicBool>,
 ) -> Result<PathBuf> {
     let client = build_client()?;
-    progress.send_modify(|p| p.status = "Conectando...".into());
+    progress.send_modify(|p| p.status = Msg::new("engine.connecting"));
     let (mut info, first) = probe(&client, url, &cfg.headers).await?;
     if let Some(name) = cfg.file_name.as_deref().map(crate::probe::sanitize).filter(|n| !n.is_empty()) {
         info.file_name = name;
@@ -183,7 +186,7 @@ pub async fn download(
         .create(true)
         .truncate(false)
         .open(&part)
-        .with_context(|| format!("não foi possível criar {}", part.display()))?;
+        .with_context(|| tr!("error.create_file", path = part.display()))?;
     file.set_len(size)?;
 
     let shared = Arc::new(Shared {
@@ -209,7 +212,7 @@ pub async fn download(
     SavedState::remove(&target);
     progress.send_modify(|p| {
         p.finished = true;
-        p.status = "Download concluído".into();
+        p.status = Msg::new("engine.done");
     });
     Ok(final_path)
 }
@@ -228,8 +231,8 @@ async fn schedule(
 
     loop {
         if shared.cancel.load(Ordering::Relaxed) {
-            progress.send_modify(|p| p.status = "Pausado".into());
-            bail!("download pausado");
+            progress.send_modify(|p| p.status = Msg::new("engine.paused"));
+            bail!(tr!("error.paused"));
         }
 
         if shared.corrupted.swap(false, Ordering::Relaxed) {
@@ -238,7 +241,7 @@ async fn schedule(
             max_conn = 1;
             let size = shared.info.size.unwrap_or(0);
             shared.chunks.lock().unwrap().reset(size);
-            progress.send_modify(|p| p.status = "Dados inconsistentes: reiniciando com 1 conexão".into());
+            progress.send_modify(|p| p.status = Msg::new("engine.corrupted"));
             // Running workers see their ids vanish and stop.
         }
 
@@ -274,12 +277,12 @@ async fn schedule(
         match tokio::time::timeout(Duration::from_millis(250), rx.recv()).await {
             Ok(Some((id, WorkerEnd::Failed(e)))) => {
                 failures += 1;
-                progress.send_modify(|p| p.status = format!("Conexão {id} falhou: {e:#}"));
+                progress.send_modify(|p| p.status = Msg::new("engine.conn_failed").arg("id", id).arg("error", format!("{e:#}")));
                 let idle = shared.chunks.lock().unwrap().active_count() == 0;
                 if failures > shared.cfg.retries * max_conn as u32 && idle {
                     // Publish once more so frontends see which segments failed.
                     publish(&shared, &mut speed, progress, max_conn);
-                    return Err(e.context("todas as conexões falharam"));
+                    return Err(e.context(tr!("error.all_failed")));
                 }
             }
             Ok(Some((_, WorkerEnd::Throttled))) => {
@@ -289,7 +292,7 @@ async fn schedule(
                 if accepted < max_conn {
                     max_conn = accepted;
                     progress.send_modify(|p| {
-                        p.status = format!("O servidor limita conexões: usando {max_conn}")
+                        p.status = Msg::new("engine.server_limits").arg("n", max_conn)
                     });
                 }
             }
@@ -366,7 +369,7 @@ async fn run_connection(shared: &Shared, id: SegId, initial: Option<Response>) -
         return Err(ServerBusy(resp.status()).into());
     }
     if resp.status() != StatusCode::PARTIAL_CONTENT {
-        bail!("o servidor respondeu {} a um pedido de intervalo", resp.status());
+        bail!(tr!("error.range_status", status = resp.status()));
     }
 
     let mut stream = resp.bytes_stream();
@@ -379,7 +382,7 @@ async fn run_connection(shared: &Shared, id: SegId, initial: Option<Response>) -
     loop {
         let item = tokio::time::timeout(shared.cfg.read_timeout, stream.next())
             .await
-            .map_err(|_| anyhow!("tempo esgotado"))?;
+            .map_err(|_| anyhow!(tr!("error.timeout")))?;
         let Some(chunk) = item else { break };
         let chunk = chunk?;
         shared.limiter.consume(chunk.len()).await;
@@ -460,7 +463,7 @@ async fn run_connection(shared: &Shared, id: SegId, initial: Option<Response>) -
     }
 
     let done = shared.chunks.lock().unwrap().get(id).is_none_or(|s| s.done());
-    if done || verify_at.is_some() { Ok(()) } else { bail!("conexão encerrada pelo servidor") }
+    if done || verify_at.is_some() { Ok(()) } else { bail!(tr!("error.closed")) }
 }
 
 /// Fallback for servers without range support: one plain sequential stream.
@@ -481,15 +484,15 @@ async fn single_stream(
     let mut meter = SpeedMeter::new(0);
     progress.send_modify(|p| {
         p.connections = 1;
-        p.status = "O servidor não suporta segmentação: 1 conexão".into();
+        p.status = Msg::new("engine.single");
     });
     let mut last = Instant::now();
     while let Some(chunk) = tokio::time::timeout(cfg.read_timeout, stream.next())
         .await
-        .map_err(|_| anyhow!("tempo esgotado"))?
+        .map_err(|_| anyhow!(tr!("error.timeout")))?
     {
         if cancel.load(Ordering::Relaxed) {
-            bail!("download cancelado (este servidor não permite retomar)");
+            bail!(tr!("error.cancelled_no_resume"));
         }
         let chunk = chunk?;
         limiter.consume(chunk.len()).await;
@@ -511,14 +514,14 @@ async fn single_stream(
     if let Some(size) = info.size
         && done != size
     {
-        bail!("download incompleto: {done} de {size} bytes");
+        bail!(tr!("error.incomplete", done = done, size = size));
     }
     let final_path = unique_path(&target);
     std::fs::rename(&part, &final_path)?;
     progress.send_modify(|p| {
         p.downloaded = done;
         p.finished = true;
-        p.status = "Download concluído".into();
+        p.status = Msg::new("engine.done");
     });
     Ok(final_path)
 }
@@ -539,8 +542,10 @@ fn publish(shared: &Shared, speed: &mut SpeedMeter, progress: &watch::Sender<Pro
         p.speed = sp;
         p.connections = connections;
         p.segments = segments;
-        if p.status.is_empty() || p.status.starts_with("Conectando") || p.status.starts_with("Baixando") {
-            p.status = format!("Baixando com até {max_conn} conexões");
+        // Keep warnings (failures, server limits) visible; replace only the
+        // routine "connecting / downloading" line.
+        if matches!(p.status.key, "" | "engine.connecting" | "engine.downloading") {
+            p.status = Msg::new("engine.downloading").arg("n", max_conn);
         }
     });
 }

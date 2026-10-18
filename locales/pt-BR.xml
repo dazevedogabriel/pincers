@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pincers — Português (Brasil)
+
+  Para criar uma tradução: copie este arquivo, troque `code` e `name` em
+  <language>, traduza só o texto entre as tags (nunca o `key`) e salve como
+  <código>.xml em %APPDATA%\Pincers\locales (ou na pasta "locales" ao lado do
+  pincers.exe). O idioma aparece em Opções → Idioma ao reabrir o Pincers.
+
+  {nome} é trocado por um valor na hora de mostrar o texto: mantenha-o.
+  <plural>: <one> quando o número é 1, <other> nos demais casos.
+-->
+<language code="pt-BR" name="Português (Brasil)">
+
+  <!-- Barra lateral -->
+  <string key="sidebar.downloads">Downloads</string>
+  <string key="sidebar.total_speed">Velocidade total</string>
+  <plural key="sidebar.active_connections"><one>{n} conexão ativa</one><other>{n} conexões ativas</other></plural>
+  <string key="sidebar.options">Opções</string>
+
+  <!-- Filtros -->
+  <string key="filter.all">Todos</string>
+  <string key="filter.running">Baixando</string>
+  <string key="filter.paused">Pausados</string>
+  <string key="filter.done">Concluídos</string>
+  <string key="filter.failed">Com falha</string>
+
+  <!-- Status de um download -->
+  <string key="status.running">Baixando</string>
+  <string key="status.paused">Pausado</string>
+  <string key="status.done">Concluído</string>
+  <string key="status.failed">Falhou</string>
+
+  <!-- Barra de URL -->
+  <string key="bar.url_hint">Cole a URL do arquivo e tecle Enter…</string>
+  <string key="bar.parts">Partes</string>
+  <plural key="bar.parts_tip"><one>Até {n} conexão por download</one><other>Até {n} conexões por download</other></plural>
+  <string key="bar.download">Baixar</string>
+
+  <!-- Lista de downloads -->
+  <plural key="list.count"><one>{n} item</one><other>{n} itens</other></plural>
+  <string key="list.pause_all">Pausar todos</string>
+  <string key="list.resume_all">Retomar todos</string>
+  <string key="list.empty">Nada por aqui.</string>
+  <string key="col.file">Arquivo</string>
+  <string key="col.parts">Partes</string>
+  <string key="col.speed">Velocidade</string>
+  <string key="col.remaining">Restante</string>
+  <string key="col.status">Status</string>
+  <plural key="item.parts"><one>{n} parte</one><other>{n} partes</other></plural>
+  <plural key="item.parts_active"><one>{active}/{n} parte ativa</one><other>{active}/{n} partes ativas</other></plural>
+
+  <!-- Ações -->
+  <string key="action.pause">Pausar</string>
+  <string key="action.resume">Retomar</string>
+  <string key="action.retry">Tentar novamente</string>
+  <string key="action.open_file">Abrir arquivo</string>
+  <string key="action.open_folder">Abrir pasta</string>
+  <string key="action.remove_tip">Remover da lista (os arquivos ficam no disco)</string>
+
+  <!-- Painel de detalhes -->
+  <string key="detail.copy_url_tip">Clique para copiar a URL</string>
+  <string key="stat.downloaded">Baixado</string>
+  <string key="stat.progress">Progresso</string>
+  <string key="stat.speed">Velocidade</string>
+  <string key="stat.remaining">Restante</string>
+  <string key="map.title">Mapa do arquivo</string>
+  <string key="legend.downloading">Baixando</string>
+  <string key="legend.done">Concluído</string>
+  <string key="legend.pending">Pendente</string>
+  <string key="chart.speed">Velocidade</string>
+  <string key="parts.col_n">N.</string>
+  <string key="parts.col_range">Intervalo</string>
+  <string key="parts.col_downloaded">Baixado</string>
+  <string key="parts.col_state">Estado</string>
+  <string key="part.error">Erro</string>
+  <string key="part.done">Concluída</string>
+  <string key="part.active">Ativa</string>
+  <string key="part.waiting">Aguardando</string>
+  <string key="part.paused">Pausada</string>
+  <string key="part.stopped">Parada</string>
+
+  <!-- Datas: o formato segue https://docs.rs/chrono/latest/chrono/format/strftime -->
+  <string key="time.today">Hoje, {time}</string>
+  <string key="time.yesterday">Ontem, {time}</string>
+  <string key="time.date_format">%d/%m/%Y %H:%M</string>
+
+  <!-- Janela Opções -->
+  <string key="options.title">Opções</string>
+  <string key="options.language">Idioma</string>
+  <string key="options.language_auto">Automático ({language})</string>
+  <string key="options.connections">Conexões por download</string>
+  <string key="options.connections_tip">O IDM usa 8. Alguns servidores bloqueiam muitas conexões.</string>
+  <string key="options.save_to">Salvar em</string>
+  <string key="options.browse">Procurar…</string>
+  <string key="options.limit">Limitar velocidade</string>
+  <string key="options.map">Mapa do arquivo</string>
+  <string key="options.map_grid">Grade</string>
+  <string key="options.map_bars">Barras</string>
+  <string key="options.note">Conexões, pasta e limite valem para downloads iniciados ou retomados depois da mudança.</string>
+  <string key="window.open_failed">falha ao abrir a janela: {error}</string>
+
+  <!-- Mensagens do motor de download -->
+  <string key="engine.connecting">Conectando…</string>
+  <string key="engine.downloading">Baixando com até {n} conexões</string>
+  <string key="engine.done">Download concluído</string>
+  <string key="engine.paused">Pausado</string>
+  <string key="engine.corrupted">Dados inconsistentes: reiniciando com 1 conexão</string>
+  <string key="engine.conn_failed">Conexão {id} falhou: {error}</string>
+  <string key="engine.server_limits">O servidor limita conexões: usando {n}</string>
+  <string key="engine.single">O servidor não suporta segmentação: 1 conexão</string>
+
+  <!-- Erros -->
+  <string key="error.connect">falha ao conectar em {url}</string>
+  <string key="error.status">o servidor respondeu {status}</string>
+  <string key="error.range_status">o servidor respondeu {status} a um pedido de intervalo</string>
+  <string key="error.server_busy">o servidor recusou mais conexões ({status})</string>
+  <string key="error.create_file">não foi possível criar {path}</string>
+  <string key="error.paused">download pausado</string>
+  <string key="error.all_failed">todas as conexões falharam</string>
+  <string key="error.timeout">tempo esgotado</string>
+  <string key="error.closed">conexão encerrada pelo servidor</string>
+  <string key="error.cancelled_no_resume">download cancelado (este servidor não permite retomar)</string>
+  <string key="error.incomplete">download incompleto: {done} de {size} bytes</string>
+
+  <!-- Comunicação com o navegador e com outra janela do Pincers -->
+  <string key="bridge.not_open">o Pincers não está aberto</string>
+  <string key="bridge.bad_reply">resposta inesperada do Pincers: {reply}</string>
+  <string key="bridge.no_start">o Pincers não abriu a tempo</string>
+  <string key="bridge.cannot_start">não foi possível iniciar {path}</string>
+  <string key="bridge.bad_token">token inválido</string>
+  <string key="bridge.too_big">mensagem grande demais: {len} bytes</string>
+  <string key="bridge.bad_message">mensagem inválida: {error}</string>
+  <string key="bridge.reg_failed">falha ao gravar {key}</string>
+
+  <!-- Linha de comando -->
+  <string key="cli.about">Pincers: baixa arquivos em várias partes ao mesmo tempo, como o IDM. Sem URL (ou com `gui`), abre a janela.</string>
+  <string key="cli.url">URL do arquivo (omita, ou use `gui`, para abrir a janela; `register` liga o Pincers às extensões do navegador)</string>
+  <string key="cli.connections">Número máximo de conexões simultâneas (o IDM usa 8)</string>
+  <string key="cli.output">Pasta de destino</string>
+  <string key="cli.limit">Limite de velocidade, ex.: 500K, 2M</string>
+  <string key="cli.min_segment">Tamanho mínimo de uma parte, em bytes (IDM: 11680)</string>
+  <string key="cli.progress">{speed}/s  ETA {eta}  {n} conexões</string>
+  <string key="cli.done">✔ {path}  ({size} em {secs}s, média {speed}/s)</string>
+  <string key="cli.paused">⏸ Pausado. Rode o mesmo comando para retomar. ({error})</string>
+  <string key="cli.bad_limit">limite inválido: {value}</string>
+  <string key="cli.registered">Pronto: as extensões do Chrome/Opera/Firefox já conseguem falar com o Pincers.</string>
+</language>

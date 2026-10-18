@@ -9,6 +9,7 @@ mod views;
 
 use crate::bridge::{self, Command, DownloadRequest};
 use crate::engine::{self, Config, Progress, SegmentView};
+use crate::{tr, tr_n};
 use crate::state::SavedState;
 use anyhow::Result;
 use eframe::egui::{self, Align2, Color32, CursorIcon, Rect, ResizeDirection, Sense, ViewportCommand, pos2, vec2};
@@ -53,7 +54,7 @@ pub fn run(initial_urls: Vec<String>) -> Result<()> {
         options,
         Box::new(move |cc| Ok(Box::new(PincersApp::new(cc, requests, listener)))),
     )
-    .map_err(|e| anyhow::anyhow!("falha ao abrir a janela: {e}"))
+    .map_err(|e| anyhow::anyhow!(tr!("window.open_failed", error = e)))
 }
 
 /// Rasterises the logo into a square 256 px RGBA icon for the taskbar.
@@ -97,6 +98,8 @@ pub struct Settings {
     /// KB/s
     pub limit_kbps: u64,
     pub map_view: MapView,
+    /// Language code chosen in Options; `None` follows the system.
+    pub language: Option<String>,
 }
 
 impl Default for Settings {
@@ -104,7 +107,7 @@ impl Default for Settings {
         let out_dir = std::env::var_os("USERPROFILE")
             .map(|h| PathBuf::from(h).join("Downloads"))
             .unwrap_or_else(|| PathBuf::from("."));
-        Self { connections: 8, out_dir, limit_enabled: false, limit_kbps: 1024, map_view: MapView::Grade }
+        Self { connections: 8, out_dir, limit_enabled: false, limit_kbps: 1024, map_view: MapView::Grade, language: None }
     }
 }
 
@@ -130,13 +133,13 @@ pub enum Status {
 }
 
 impl Status {
-    pub fn label(&self) -> &'static str {
-        match self {
-            Status::Running => "Baixando",
-            Status::Paused => "Pausado",
-            Status::Done(_) => "Concluído",
-            Status::Failed(_) => "Falhou",
-        }
+    pub fn label(&self) -> String {
+        tr!(match self {
+            Status::Running => "status.running",
+            Status::Paused => "status.paused",
+            Status::Done(_) => "status.done",
+            Status::Failed(_) => "status.failed",
+        })
     }
     pub fn color(&self) -> Color32 {
         match self {
@@ -159,14 +162,18 @@ pub enum Filter {
 
 impl Filter {
     pub const ALL: [Filter; 5] = [Filter::All, Filter::Running, Filter::Paused, Filter::Done, Filter::Failed];
-    pub fn label(self) -> &'static str {
+    /// Stable identifier (also used as the widget id).
+    pub fn key(self) -> &'static str {
         match self {
-            Filter::All => "Todos",
-            Filter::Running => "Baixando",
-            Filter::Paused => "Pausados",
-            Filter::Done => "Concluídos",
-            Filter::Failed => "Com falha",
+            Filter::All => "filter.all",
+            Filter::Running => "filter.running",
+            Filter::Paused => "filter.paused",
+            Filter::Done => "filter.done",
+            Filter::Failed => "filter.failed",
         }
+    }
+    pub fn label(self) -> String {
+        tr!(self.key())
     }
     pub fn dot(self) -> Color32 {
         match self {
@@ -244,9 +251,9 @@ impl Item {
     pub fn parts_label(&self) -> String {
         let n = self.last.segments.len().max(1);
         if self.status == Status::Running {
-            format!("{}/{n} partes ativas", self.active_parts())
+            tr_n!("item.parts_active", n, active = self.active_parts())
         } else {
-            format!("{n} {}", if n == 1 { "parte" } else { "partes" })
+            tr_n!("item.parts", n)
         }
     }
     pub fn size_label(&self) -> String {
@@ -317,6 +324,14 @@ struct SavedItem {
     /// Needed again on resume: sites behind a login check the cookies.
     headers: Vec<(String, String)>,
     suggested_name: Option<String>,
+}
+
+/// Language chosen in Options, read straight from the saved settings (the
+/// command line and the native host use it too, without opening the window).
+pub fn saved_language() -> Option<String> {
+    let data = std::fs::read(saved_path()).ok()?;
+    let saved: Saved = serde_json::from_slice(&data).ok()?;
+    saved.settings.language
 }
 
 fn saved_path() -> PathBuf {

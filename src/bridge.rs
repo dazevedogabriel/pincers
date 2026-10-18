@@ -8,6 +8,7 @@
 //!   stdout, 32-bit length + JSON). The host forwards each request to the
 //!   window, starting Pincers first when it is not open.
 
+use crate::tr;
 use anyhow::{Context, Result, anyhow, bail};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader, Read, Write};
@@ -100,17 +101,17 @@ fn random_token() -> String {
 
 /// Sends `command` to the running window. Errors when none is listening.
 pub fn send(command: Command) -> Result<()> {
-    let data = std::fs::read(instance_path()).context("Pincers não está aberto")?;
+    let data = std::fs::read(instance_path()).with_context(|| tr!("bridge.not_open"))?;
     let info: InstanceInfo = serde_json::from_slice(&data)?;
     let addr = SocketAddr::from(([127, 0, 0, 1], info.port));
-    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_millis(800)).context("Pincers não está aberto")?;
+    let mut stream = TcpStream::connect_timeout(&addr, Duration::from_millis(800)).with_context(|| tr!("bridge.not_open"))?;
     stream.set_read_timeout(Some(Duration::from_secs(3)))?;
     let mut line = serde_json::to_vec(&Envelope { token: info.token, command })?;
     line.push(b'\n');
     stream.write_all(&line)?;
     let mut reply = String::new();
     BufReader::new(stream).read_line(&mut reply)?;
-    if reply.trim() == "ok" { Ok(()) } else { bail!("resposta inesperada do Pincers: {reply:?}") }
+    if reply.trim() == "ok" { Ok(()) } else { bail!(tr!("bridge.bad_reply", reply = format!("{reply:?}"))) }
 }
 
 /// Like [`send`], but starts Pincers first if it is not open.
@@ -124,7 +125,7 @@ pub fn send_or_launch(command: Command) -> Result<()> {
         std::thread::sleep(Duration::from_millis(250));
         match send(command.clone()) {
             Ok(()) => return Ok(()),
-            Err(e) if Instant::now() > deadline => return Err(e.context("o Pincers não abriu a tempo")),
+            Err(e) if Instant::now() > deadline => return Err(e.context(tr!("bridge.no_start"))),
             Err(_) => {}
         }
     }
@@ -153,7 +154,7 @@ fn launch_detached() -> Result<()> {
         // The job may forbid breaking away; start it inside the job then.
         cmd.creation_flags(DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP);
     }
-    cmd.spawn().map(|_| ()).with_context(|| format!("não foi possível iniciar {}", exe.display()))
+    cmd.spawn().map(|_| ()).with_context(|| tr!("bridge.cannot_start", path = exe.display()))
 }
 
 // ------------------------------------------------------------- server side
@@ -195,7 +196,7 @@ fn handle(stream: TcpStream, token: &str, on_command: &impl Fn(Command)) -> Resu
     BufReader::new(stream.try_clone()?.take(4 << 20)).read_line(&mut line)?;
     let env: Envelope = serde_json::from_str(&line)?;
     if env.token != token {
-        return Err(anyhow!("token inválido"));
+        return Err(anyhow!(tr!("bridge.bad_token")));
     }
     on_command(env.command);
     (&stream).write_all(b"ok\n")?;
@@ -243,7 +244,7 @@ pub fn run_native_host() -> Result<()> {
         }
         let len = u32::from_ne_bytes(len) as usize;
         if len > 64 << 20 {
-            bail!("mensagem grande demais: {len} bytes");
+            bail!(tr!("bridge.too_big", len = len));
         }
         let mut buf = vec![0u8; len];
         stdin.read_exact(&mut buf)?;
@@ -255,7 +256,7 @@ pub fn run_native_host() -> Result<()> {
             }),
             Ok(HostMessage::Show) => result_json(send_or_launch(Command::Show)),
             Ok(HostMessage::Download { downloads }) => result_json(send_or_launch(Command::Add { downloads })),
-            Err(e) => serde_json::json!({ "ok": false, "error": format!("mensagem inválida: {e}") }),
+            Err(e) => serde_json::json!({ "ok": false, "error": tr!("bridge.bad_message", error = e) }),
         };
         let out = serde_json::to_vec(&reply)?;
         stdout.write_all(&(out.len() as u32).to_ne_bytes())?;
@@ -326,7 +327,7 @@ pub fn register(chrome_extension_id: &str, firefox_addon_id: &str) -> Result<Vec
             .stdout(std::process::Stdio::null())
             .status()?;
         if !status.success() {
-            bail!("falha ao gravar {full}");
+            bail!(tr!("bridge.reg_failed", key = full));
         }
         done.push(full);
     }

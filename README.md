@@ -1,98 +1,204 @@
-# 🦀 Pincers
+<p align="center">
+  <img src="assets/logo.svg" alt="Pincers logo" width="180">
+</p>
 
-A segmented, multi-connection download manager written in Rust, rebuilt from the
-reverse engineering of Internet Download Manager's engine
-(see [docs/IDM_ANALYSIS.md](docs/IDM_ANALYSIS.md)).
+<h1 align="center">Pincers</h1>
 
-## Usage
+<p align="center">
+  <strong>A blazing-fast, multi-connection download manager — written in Rust 🦀</strong><br>
+  It grabs every file with several pincers at once.
+</p>
+
+<p align="center">
+  <img alt="Written in Rust" src="https://img.shields.io/badge/written%20in-Rust-dea584?logo=rust&logoColor=white">
+  <img alt="Rust edition 2024" src="https://img.shields.io/badge/edition-2024-f0643a">
+  <img alt="Async with Tokio" src="https://img.shields.io/badge/async-tokio-4cc38a">
+  <img alt="GUI with egui" src="https://img.shields.io/badge/GUI-egui-3aa6c5">
+  <img alt="Windows" src="https://img.shields.io/badge/platform-Windows-0078d4?logo=windows&logoColor=white">
+</p>
+
+<p align="center">
+  <a href="#-features">Features</a> ·
+  <a href="#-how-it-works">How it works</a> ·
+  <a href="#-getting-started">Getting started</a> ·
+  <a href="#-browser-extension">Browser extension</a> ·
+  <a href="#%EF%B8%8F-project-layout">Project layout</a>
+</p>
+
+<p align="center">
+  <img src="docs/images/pincers-window-2.png" alt="Pincers downloading a 1 GB file over 8 connections at 57 MB/s" width="900">
+  <img src="docs/images/pincers-window.png" alt="Pincers downloading a 1 GB file over 8 connections at 57 MB/s" width="900">
+</p>
+
+---
+
+**Pincers** splits each download into parts and fetches them over several HTTP
+connections at the same time, the way **Internet Download Manager** does. Its
+segmentation engine was rebuilt from the reverse engineering of `IDMan.exe`:
+the same rules for choosing which part to split, when to open another
+connection and how to stitch the parts together, reimplemented from scratch
+in safe, async **Rust**. *(Pincers? A crab's claws. Ferris would approve.)*
+
+## ✨ Features
+
+- **Dynamic segmentation, IDM-style.** Up to 32 connections per file
+  (8 by default). When a connection finishes, it immediately splits the largest
+  remaining part, so every connection stays busy until the last byte.
+- **Resume anywhere.** Pause, close the app, pull the plug: progress is
+  saved every second and the download continues where it stopped.
+  `If-Range` makes sure the file didn't change on the server meanwhile.
+- **No "assembling file…" step.** Every connection writes straight into one
+  preallocated file, so the download is done the moment the last byte arrives.
+- **Plays nice with servers.** Retries with back-off, restarts stalled
+  connections, falls back to a single connection when ranges aren't supported,
+  and backs off to the number of connections a server accepts (HTTP 429/503).
+- **Data-integrity checks.** Neighbouring connections must agree on 64
+  overlapping bytes at each boundary; on a mismatch Pincers restarts on one
+  connection instead of saving a corrupt file.
+- **Speed limiter** shared fairly by all connections.
+- **A proper desktop app.** Dark theme designed with Claude Design, Geist
+  fonts, custom title bar, per-part progress bars, a live file map, speed
+  charts and a parts table, all in a single native executable built with egui.
+- **Browser integration** for Opera GX, Chrome and Firefox (see below).
+- **CLI included** for scripts and terminals.
+
+## 🔧 How it works
+
+```mermaid
+flowchart LR
+    A["1st connection<br>Range: bytes=0-"] --> B{"Server answers<br>206 + size?"}
+    B -- no --> S["Single stream"]
+    B -- yes --> C["Free slot?"]
+    C -- yes --> D["Pick the part with the most free space<br>free = remaining − speed × connect_time"]
+    D --> E{"free ≥ 2 × 11 680 + 3?"}
+    E -- yes --> F["Split it in half:<br>the new connection takes the upper half"]
+    F --> C
+    E -- no --> G["Connections run to the end"]
+    G --> H["A finished connection frees its slot"]
+    H --> C
+```
+
+The rules come straight from IDM's own code (`ChunksList::FindMaxFreeChunk`,
+`NeedNewConnection`, `HTTPConnection::GetTempEndPos`…):
+
+1. The first connection asks for `bytes=0-` and keeps downloading. Its answer
+   tells the size and whether the server supports ranges.
+2. The **free space** of a part is what is left to download *minus what its
+   connection will still fetch while a new connection is being established*.
+   The part with the most free space is split in half.
+3. Parts smaller than **11 680 bytes** (8 TCP segments of 1 460 bytes) are never split.
+4. A connection that reaches its end keeps going and **absorbs the next part**
+   if that one has received fewer than 51 bytes. Otherwise it verifies 64 bytes
+   of overlap with its neighbour and stops.
+
+The whole investigation, with addresses, decompiled snippets and what Pincers
+does differently, is in **[docs/IDM_ANALYSIS.md](docs/IDM_ANALYSIS.md)**.
+
+### Some numbers
+
+Measured on the same machine and connection, same files, against `curl`:
+
+| File | curl (1 connection) | Pincers (8 connections) |
+|---|---|---|
+| 50 MB, far-away server | 14.6 s | **7.2 s** |
+| 100 MB, Hetzner Ashburn | 5.5 s | **4.4 s** |
+
+Every test file came out byte-for-byte identical to `curl`'s copy (SHA-256),
+including downloads that were killed halfway and resumed.
+
+## 🚀 Getting started
+
+You need [Rust](https://rustup.rs) (stable, edition 2024) and, on Windows, the
+Windows SDK's `rc.exe` (installed with Visual Studio Build Tools), used to
+embed the icon.
 
 ```bash
+git clone <this repository> pincers
+cd pincers
 cargo build --release
 ```
 
-### Graphical interface
+### Desktop app
 
-Open `target/release/pincers.exe` with no arguments (double-click works), or
-`pincers.exe gui <URL>...` to open the window and start downloading.
-The look follows the Claude Design mock-up (dark theme, Geist fonts, custom title bar).
+Double-click `target/release/pincers.exe`, or start it with links to download:
 
-* **Top bar:** paste the URL and press Enter (or **Baixar**); **Partes 4 · 8 · 16 · 32**
-  sets how many connections the next downloads use
-* **Sidebar:** filters (Todos, Baixando, Pausados, Concluídos, Com falha) with counts,
-  total speed with a chart, active connections, and **Opções**
-* **List:** each download's real parts (Pincers splits dynamically, like IDM),
-  speed, time remaining, status and a pause / resume / open folder button
-* **Detail panel:** statistics, *Mapa do arquivo* (grid or bars, chosen in Opções),
-  the speed chart, the parts table and Pausar/Retomar/Tentar novamente/Abrir arquivo,
-  Abrir pasta and Remover; clicking the URL copies it
-* below 1180 px wide the sidebar hides and the filters and Opções move to the
-  list toolbar, as in the mock-up
-* the list is saved to `%APPDATA%\Pincers\pincers.json`; downloads interrupted when
-  the app closes come back as "Pausado" and resume where they stopped
-* **Remover** takes the item off the list but doesn't delete files: the `.part`/`.pincers`
-  of an unfinished download stay, and adding the same URL again resumes it
+```bash
+target/release/pincers.exe gui https://example.com/big-file.iso
+```
 
-Fonts: Geist and Geist Mono (Vercel, SIL Open Font License, `assets/fonts/OFL-LICENSE.txt`)
-are embedded in the executable. The logo comes from `assets/logo.svg`.
+Paste one or more links into the bar and press **Enter**. Pincers runs as a
+single instance: opening it again just brings the window to the front (and
+hands over any links you passed).
 
-### Browser extension (Opera GX, Chrome, Firefox)
+### Command line
 
-The extension in `extension/` works like IDM's "IDM Integration Module": when a
-download of one of the configured types starts in the browser, it **cancels it in the browser
-and copies the link** in a small window ("Download capturado"). Then just paste
-(Ctrl+V) into Pincers's URL field. Pasting several links at once also works.
+```bash
+target/release/pincers.exe https://example.com/big-file.iso -c 16 -o D:\Downloads -l 5M
+```
 
-* hold **Alt** while clicking a link to let the browser download it
-* right-click: **Copiar link para o Pincers** (links, images, videos) and
-  **Copiar todos os links de arquivos para o Pincers** (whole page or selection)
-* the toolbar icon opens the popup: on/off, the last captured links, the file
-  types (IDM's default list) and sites to ignore
+| Option | Meaning |
+|---|---|
+| `-c, --connections` | maximum connections (default 8, like IDM) |
+| `-o, --output` | destination folder |
+| `-l, --limit` | speed limit, e.g. `500K`, `2M` |
+| `Ctrl+C` | pause; run the same command again to resume |
 
-Build it with:
+## 🧩 Browser extension
+
+<img src="docs/images/extension-captured.png" alt="The extension after capturing a download" width="420" align="right">
+
+Like IDM's *Integration Module*: when the browser starts downloading a file of
+a known type, the extension cancels it and shows the link already
+**copied to the clipboard**, so you only need to press **Ctrl+V** in Pincers.
+
+- **Alt+click** a link to let the browser handle that one.
+- Right-click → **Copiar link para o Pincers**, or copy *every* file link on
+  the page (or in the selection) at once.
+- Choose the file types and the sites to ignore in the toolbar popup.
+
+Build it:
 
 ```bash
 powershell -ExecutionPolicy Bypass -File extension/build.ps1
 ```
 
-**Opera GX / Chrome:** open `opera://extensions` (or `chrome://extensions`), turn on
-**Modo de desenvolvedor**, click **Carregar sem compactação** and pick `extension/dist/chrome`.
+- **Opera GX / Chrome:** `opera://extensions` (or `chrome://extensions`) →
+  turn on developer mode → *Load unpacked* → `extension/dist/chrome`.
+- **Firefox:** `about:debugging#/runtime/this-firefox` → *Load temporary
+  add-on* → `extension/dist/firefox/manifest.json`. Permanent installs need
+  the `.xpi` signed (free) on [addons.mozilla.org](https://addons.mozilla.org/developers/).
 
-**Firefox:** regular Firefox only installs signed extensions permanently. To test,
-open `about:debugging#/runtime/this-firefox` → **Carregar extensão temporária…** →
-`extension/dist/firefox/manifest.json` (it goes away when Firefox closes). To install permanently,
-sign `extension/dist/pincers-firefox.xpi` for free on addons.mozilla.org as
-"distribuição própria" (unlisted) and install the signed `.xpi` you get back.
+<br clear="right">
 
-The extension's icons come from `assets/logo.svg`; after changing the logo, regenerate them with
-`cargo run --release --example extension_icons` and run `build.ps1` again.
+## 🗂️ Project layout
 
-### Icon
-
-The exe's icon (Explorer, desktop, shortcuts) and the window icon come from
-`assets/logo.svg`. To change it, replace that file and run `cargo build --release`.
-If Explorer keeps showing the old icon, that's its cache: run `ie4uinit.exe -show`
-or restart Explorer.
-
-### Command line
-
-```bash
-target/release/pincers.exe <URL> [-c 8] [-o folder] [-l 2M]
+```text
+pincers/
+├── src/
+│   ├── main.rs        CLI entry point, single-instance hand-off
+│   ├── engine.rs      scheduler + connections (IDM's Session / Connection)
+│   ├── chunks.rs      segment bookkeeping (IDM's ChunksList)
+│   ├── probe.rs       first request: size, ranges, file name
+│   ├── limiter.rs     fair token-bucket speed limiter
+│   ├── state.rs       resume state (.pincers files)
+│   ├── bridge.rs      local IPC + native-messaging host for browsers
+│   └── gui/           egui window: theme, views, title bar
+├── extension/         browser extension (Opera GX, Chrome, Firefox)
+├── assets/            logo.svg (also the .exe icon) and Geist fonts
+├── docs/              reverse-engineering notes and screenshots
+└── build.rs           turns assets/logo.svg into the Windows icon
 ```
 
-* `-c, --connections` maximum number of connections (default 8, like IDM)
-* `-o, --output` destination folder
-* `-l, --limit` speed limit (`500K`, `2M`…)
-* `Ctrl+C` pauses. Run the same command again to resume where you left off.
+Want a different icon? Replace `assets/logo.svg` and run `cargo build --release`.
+The executable, window and taskbar icons are regenerated from it.
 
-## How it works (in short)
+## 🙏 Credits
 
-1. The first connection asks for `bytes=0-` and keeps downloading.
-2. While there are free slots, Pincers picks the segment with the most
-   *free space* (`remaining − speed × connect_time`) and splits it in half.
-3. When a connection finishes, it immediately splits the largest remaining segment.
-4. A connection that reaches its end absorbs the next segment if that one
-   hasn't really started; otherwise it checks 64 bytes of overlap.
-5. Everything is written straight into a preallocated `.part` file;
-   progress is saved to `.pincers` every second.
-6. If the server refuses extra connections (HTTP 429/503), Pincers settles on the
-   number it accepts instead of insisting.
+- [Geist and Geist Mono](https://vercel.com/font) by Vercel, under the SIL Open Font License.
+- Built on [tokio](https://tokio.rs), [reqwest](https://github.com/seanmonstar/reqwest),
+  [egui/eframe](https://github.com/emilk/egui), [resvg](https://github.com/linebender/resvg) and [clap](https://github.com/clap-rs/clap).
+- Internet Download Manager is a product of Tonec FZE. Pincers is an
+  independent project, not affiliated with or endorsed by Tonec. Its code was
+  written from scratch after studying how IDM behaves; no IDM code is included.
+
+<p align="center"><sub>Made with 🦀 and a lot of <code>cargo build --release</code>.</sub></p>

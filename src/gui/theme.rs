@@ -303,10 +303,17 @@ pub fn when(ts: i64) -> String {
     let d = t.date_naive();
     let hm = t.format("%H:%M");
     if d == today {
-        format!("Hoje, {hm}")
+        crate::tr!("time.today", time = hm)
     } else if Some(d) == today.pred_opt() {
-        format!("Ontem, {hm}")
+        crate::tr!("time.yesterday", time = hm)
     } else {
-        t.format("%d/%m/%Y %H:%M").to_string()
+        // The pattern itself is translatable (day/month order differs).
+        let pattern = crate::tr!("time.date_format");
+        let mut out = String::new();
+        use std::fmt::Write;
+        match write!(out, "{}", t.format(&pattern)) {
+            Ok(()) => out,
+            Err(_) => t.format("%Y-%m-%d %H:%M").to_string(),
+        }
     }
 }

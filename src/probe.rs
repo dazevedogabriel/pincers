@@ -33,11 +33,11 @@ pub async fn probe(client: &Client, url: &str, headers: &[(String, String)]) -> 
     let resp = req
         .send()
         .await
-        .with_context(|| format!("falha ao conectar em {url}"))?;
+        .with_context(|| crate::tr!("error.connect", url = url))?;
 
     let status = resp.status();
     if !(status == StatusCode::OK || status == StatusCode::PARTIAL_CONTENT) {
-        bail!("o servidor respondeu {status}");
+        bail!(crate::tr!("error.status", status = status));
     }
 
     let h = resp.headers();
