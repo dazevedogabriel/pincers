@@ -1,9 +1,0 @@
-body.captured { width: auto; min-height: 100vh; }
-.links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; overflow: auto; max-height: 260px; }
-.links li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
-.links .badge { flex: none; width: 34px; height: 34px; border-radius: 8px; border: 1px solid var(--track); background: var(--raised); display: flex; align-items: center; justify-content: center;
-  font: 500 9.5px "Geist Mono", monospace; color: var(--muted); }
-.links .text { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
-.links .name { font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.links .url { font: 11px "Geist Mono", monospace; color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.links button { flex: none; height: 28px; padding: 0 10px; font-size: 12px; }

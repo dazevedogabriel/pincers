@@ -22,6 +22,7 @@
   <a href="#-how-it-works">How it works</a> ·
   <a href="#-getting-started">Getting started</a> ·
   <a href="#-browser-extension">Browser extension</a> ·
+  <a href="#-translations">Translations</a> ·
   <a href="#%EF%B8%8F-project-layout">Project layout</a>
 </p>
 
@@ -60,6 +61,8 @@ in safe, async **Rust**. *(Pincers? A crab's claws. Ferris would approve.)*
   fonts, custom title bar, per-part progress bars, a live file map, speed
   charts and a parts table, all in a single native executable built with egui.
 - **Browser integration** for Opera GX, Chrome and Firefox (see below).
+- **Speaks your language.** Every text comes from an XML file: Portuguese and
+  English are built in, and new languages can be added without recompiling.
 - **CLI included** for scripts and terminals.
 
 ## 🔧 How it works
@@ -113,7 +116,7 @@ Windows SDK's `rc.exe` (installed with Visual Studio Build Tools), used to
 embed the icon.
 
 ```bash
-git clone <this repository> pincers
+git clone https://github.com/dazevedogabriel/Pincers.git pincers
 cd pincers
 cargo build --release
 ```
@@ -145,30 +148,46 @@ target/release/pincers.exe https://example.com/big-file.iso -c 16 -o D:\Download
 
 ## 🧩 Browser extension
 
-<img src="docs/images/extension-captured.png" alt="The extension after capturing a download" width="420" align="right">
+The browser extension lives in its own repository:
+**[pincers-extension](https://github.com/dazevedogabriel/pincers-extension)**
+(Opera GX, Chrome and Firefox). Like IDM's *Integration Module*, it catches
+the browser's downloads and hands them to Pincers, starting it if it is closed.
 
-Like IDM's *Integration Module*: when the browser starts downloading a file of
-a known type, the extension cancels it and shows the link already
-**copied to the clipboard**, so you only need to press **Ctrl+V** in Pincers.
+There is nothing to install or add to PATH on this side: browsers can only
+start a program they find in the registry, so every time the Pincers window
+opens it registers its *current* location (`HKCU`, no admin rights). Move
+`pincers.exe` anywhere, open it once, and the extension follows it.
+`pincers register` does the same from a terminal; `pincers unregister` removes
+the entries. The extension's IDs live in [`src/bridge.rs`](src/bridge.rs).
 
-- **Alt+click** a link to let the browser handle that one.
-- Right-click → **Copiar link para o Pincers**, or copy *every* file link on
-  the page (or in the selection) at once.
-- Choose the file types and the sites to ignore in the toolbar popup.
+## 🌍 Translations
 
-Build it:
+Every text Pincers shows (window, status messages, errors and `--help`) comes from
+[`locales/`](locales): **Português (Brasil)** and **English** ship inside the
+executable. Pick one in **Opções → Idioma**, or leave it on *Automático* to follow
+the Windows language. The change applies at once, even to running downloads.
 
-```bash
-powershell -ExecutionPolicy Bypass -File extension/build.ps1
-```
+Adding a language takes no compiler:
 
-- **Opera GX / Chrome:** `opera://extensions` (or `chrome://extensions`) →
-  turn on developer mode → *Load unpacked* → `extension/dist/chrome`.
-- **Firefox:** `about:debugging#/runtime/this-firefox` → *Load temporary
-  add-on* → `extension/dist/firefox/manifest.json`. Permanent installs need
-  the `.xpi` signed (free) on [addons.mozilla.org](https://addons.mozilla.org/developers/).
+1. Copy [`locales/en.xml`](locales/en.xml) and change `code` and `name`:
+   ```xml
+   <language code="es" name="Español">
+     <string key="bar.download">Descargar</string>
+     <plural key="list.count"><one>{n} elemento</one><other>{n} elementos</other></plural>
+   </language>
+   ```
+2. Translate the text between the tags. Keep each `key` and every `{placeholder}`;
+   `<plural>` takes `<one>` (for 1) and `<other>`.
+3. Save it as `es.xml` in `%APPDATA%\Pincers\locales\` (or in a `locales` folder
+   next to `pincers.exe`) and reopen Pincers. It shows up in the language menu.
 
-<br clear="right">
+Missing keys fall back to English, then Portuguese, so a partial translation still
+works. A file with the code of a built-in language overrides just the keys it has.
+To ship a language in the executable, add the file to `locales/` and to `BUILT_IN`
+in [`src/i18n.rs`](src/i18n.rs); `cargo test` then checks it has every key the code uses.
+
+The [browser extension](https://github.com/dazevedogabriel/pincers-extension#-translations)
+is translated separately, in the browsers' standard `messages.json` format.
 
 ## 🗂️ Project layout
 
@@ -182,10 +201,12 @@ pincers/
 │   ├── limiter.rs     fair token-bucket speed limiter
 │   ├── state.rs       resume state (.pincers files)
 │   ├── bridge.rs      local IPC + native-messaging host for browsers
+│   ├── i18n.rs        translations loaded from locales/*.xml
 │   └── gui/           egui window: theme, views, title bar
-├── extension/         browser extension (Opera GX, Chrome, Firefox)
+├── locales/           pt-BR.xml and en.xml: every text the program shows
 ├── assets/            logo.svg (also the .exe icon) and Geist fonts
 ├── docs/              reverse-engineering notes and screenshots
+├── examples/          extension_icons: renders the extension's icons from the logo
 └── build.rs           turns assets/logo.svg into the Windows icon
 ```
 

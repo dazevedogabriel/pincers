@@ -38,6 +38,9 @@ pub fn run(initial_urls: Vec<String>) -> Result<()> {
         return Ok(());
     }
     let listener = bridge::Listener::bind().ok();
+    // Keep the browser extensions pointed at wherever this exe is now.
+    #[cfg(windows)]
+    let _ = bridge::register();
 
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("Pincers")
@@ -342,6 +345,13 @@ fn saved_path() -> PathBuf {
         .join("pincers.json")
 }
 
+/// Deletes what an unfinished download of `target` left on disk; the
+/// finished file, if any, is not touched.
+fn discard_partial(target: &Path) {
+    let _ = std::fs::remove_file(crate::state::part_path(target));
+    SavedState::remove(target);
+}
+
 fn now_ts() -> i64 {
     chrono::Local::now().timestamp()
 }
@@ -540,9 +550,31 @@ impl PincersApp {
         }
     }
 
+    /// Removes a download from the list. An unfinished one also loses its
+    /// `.part` and `.pincers` files, so it stops taking up disk space.
     pub fn remove(&mut self, id: u64) {
         self.pause(id);
         let idx = self.items.iter().position(|i| i.id == id);
+        if let Some(item) = idx.map(|i| &self.items[i]).filter(|i| !matches!(i.status, Status::Done(_))) {
+            let (out_dir, mut name) = (item.out_dir.clone(), item.last.file_name.clone());
+            let (outcome, rx) = (item.outcome.clone(), item.rx.clone());
+            let running = item.status == Status::Running;
+            self.rt.spawn(async move {
+                if running {
+                    // The engine saves its state while it stops: delete after that.
+                    while outcome.lock().unwrap().is_none() {
+                        tokio::time::sleep(Duration::from_millis(50)).await;
+                    }
+                    // It may have learnt the name only after we looked.
+                    if let Some(rx) = rx {
+                        name = rx.borrow().file_name.clone();
+                    }
+                }
+                if !name.is_empty() {
+                    discard_partial(&out_dir.join(name));
+                }
+            });
+        }
         self.items.retain(|i| i.id != id);
         if self.selected == Some(id) {
             // Select the neighbour, like the mock-up's onRemove.

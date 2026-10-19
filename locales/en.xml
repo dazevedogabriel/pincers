@@ -57,7 +57,7 @@
   <string key="action.retry">Try again</string>
   <string key="action.open_file">Open file</string>
   <string key="action.open_folder">Open folder</string>
-  <string key="action.remove_tip">Remove from the list (files stay on disk)</string>
+  <string key="action.remove_tip">Remove from the list (an unfinished download also loses its partial file; finished files stay on disk)</string>
 
   <!-- Detail panel -->
   <string key="detail.copy_url_tip">Click to copy the URL</string>
@@ -136,7 +136,7 @@
 
   <!-- Command line -->
   <string key="cli.about">Pincers: downloads files in several parts at once, like IDM. Without a URL (or with `gui`), opens the window.</string>
-  <string key="cli.url">File URL (leave out, or use `gui`, to open the window; `register` connects Pincers to the browser extensions)</string>
+  <string key="cli.url">File URL (leave out, or use `gui`, to open the window; `register` / `unregister` connect / disconnect Pincers and the browser extensions)</string>
   <string key="cli.connections">Maximum number of simultaneous connections (IDM uses 8)</string>
   <string key="cli.output">Destination folder</string>
   <string key="cli.limit">Speed limit, e.g. 500K, 2M</string>
@@ -145,5 +145,6 @@
   <string key="cli.done">✔ {path}  ({size} in {secs}s, average {speed}/s)</string>
   <string key="cli.paused">⏸ Paused. Run the same command again to resume. ({error})</string>
   <string key="cli.bad_limit">invalid limit: {value}</string>
-  <string key="cli.registered">Done: the Chrome/Opera/Firefox extensions can now talk to Pincers.</string>
+  <string key="cli.registered">Done: the Chrome/Opera/Firefox extensions can now talk to Pincers. (Opening the Pincers window does this too.)</string>
+  <string key="cli.unregistered">Removed: the browser extensions no longer start Pincers (until its window is opened again).</string>
 </language>

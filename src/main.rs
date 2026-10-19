@@ -90,10 +90,18 @@ fn main() -> Result<()> {
     match args.url.as_deref() {
         #[cfg(windows)]
         Some("register") => {
-            for key in bridge::register(bridge::CHROME_EXTENSION_ID, bridge::FIREFOX_ADDON_ID)? {
+            for key in bridge::register()? {
                 println!("✔ {key}");
             }
             println!("{}", tr!("cli.registered"));
+            Ok(())
+        }
+        #[cfg(windows)]
+        Some("unregister") => {
+            for key in bridge::unregister_host() {
+                println!("✖ {key}");
+            }
+            println!("{}", tr!("cli.unregistered"));
             Ok(())
         }
         None => {

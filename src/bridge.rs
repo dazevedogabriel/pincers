@@ -283,53 +283,126 @@ fn instance_alive() -> bool {
 }
 
 // ----------------------------------------------------------- registration
+//
+// Browsers find a native host only through the registry, which must hold the
+// executable's full path. Instead of an installer or PATH entry, the window
+// refreshes that registration every time it opens: a moved `pincers.exe`
+// reconnects itself the next time it is started.
 
-/// Registers the native host for Firefox, Chrome, Chromium and Opera (Opera
-/// reads Chrome's key) under HKCU, pointing at this executable.
+/// Registry keys (under HKCU) the browsers read, and whether it is Firefox's.
 #[cfg(windows)]
-pub fn register(chrome_extension_id: &str, firefox_addon_id: &str) -> Result<Vec<String>> {
+const REGISTRY_KEYS: [(&str, bool); 3] = [
+    (r"Software\Google\Chrome\NativeMessagingHosts", false), // also read by Opera, Edge and Brave
+    (r"Software\Chromium\NativeMessagingHosts", false),
+    (r"Software\Mozilla\NativeMessagingHosts", true),
+];
+
+/// Points the browsers' native host registration at this executable,
+/// writing only what changed. Returns the registry keys.
+#[cfg(windows)]
+pub fn register() -> Result<Vec<String>> {
     let exe = std::env::current_exe()?;
     let dir = instance_path().parent().unwrap().to_owned();
     std::fs::create_dir_all(&dir)?;
-    let chrome_manifest = dir.join("native-host-chrome.json");
-    let firefox_manifest = dir.join("native-host-firefox.json");
-    std::fs::write(
-        &chrome_manifest,
-        serde_json::to_vec_pretty(&serde_json::json!({
-            "name": HOST_NAME,
-            "description": "Pincers download manager",
-            "path": exe,
-            "type": "stdio",
-            "allowed_origins": [format!("chrome-extension://{chrome_extension_id}/")],
-        }))?,
-    )?;
-    std::fs::write(
-        &firefox_manifest,
-        serde_json::to_vec_pretty(&serde_json::json!({
-            "name": HOST_NAME,
-            "description": "Pincers download manager",
-            "path": exe,
-            "type": "stdio",
-            "allowed_extensions": [firefox_addon_id],
-        }))?,
-    )?;
     let mut done = Vec::new();
-    for (key, manifest) in [
-        (r"Software\Google\Chrome\NativeMessagingHosts", &chrome_manifest),
-        (r"Software\Chromium\NativeMessagingHosts", &chrome_manifest),
-        (r"Software\Mozilla\NativeMessagingHosts", &firefox_manifest),
-    ] {
-        let full = format!(r"HKCU\{key}\{HOST_NAME}");
-        let status = std::process::Command::new("reg")
-            .args(["add", &full, "/ve", "/t", "REG_SZ", "/d"])
-            .arg(manifest)
-            .arg("/f")
-            .stdout(std::process::Stdio::null())
-            .status()?;
-        if !status.success() {
-            bail!(tr!("bridge.reg_failed", key = full));
+    for (firefox, file) in [(false, "native-host-chrome.json"), (true, "native-host-firefox.json")] {
+        let mut manifest = serde_json::json!({
+            "name": HOST_NAME,
+            "description": "Pincers download manager",
+            "path": exe,
+            "type": "stdio",
+        });
+        if firefox {
+            manifest["allowed_extensions"] = serde_json::json!([FIREFOX_ADDON_ID]);
+        } else {
+            manifest["allowed_origins"] = serde_json::json!([format!("chrome-extension://{CHROME_EXTENSION_ID}/")]);
         }
-        done.push(full);
+        let data = serde_json::to_vec_pretty(&manifest)?;
+        let path = dir.join(file);
+        if std::fs::read(&path).ok().as_deref() != Some(&data[..]) {
+            std::fs::write(&path, &data)?;
+        }
+        let value = path.to_string_lossy();
+        for (key, _) in REGISTRY_KEYS.iter().filter(|(_, ff)| *ff == firefox) {
+            let key = format!(r"{key}\{HOST_NAME}");
+            if registry::read(&key).as_deref() != Some(&*value) {
+                registry::write(&key, &value).with_context(|| tr!("bridge.reg_failed", key = &key))?;
+            }
+            done.push(format!(r"HKCU\{key}"));
+        }
     }
     Ok(done)
+}
+
+/// Undoes [`register`], so a deleted Pincers leaves nothing behind.
+#[cfg(windows)]
+pub fn unregister_host() -> Vec<String> {
+    let dir = instance_path().parent().unwrap().to_owned();
+    for file in ["native-host-chrome.json", "native-host-firefox.json"] {
+        let _ = std::fs::remove_file(dir.join(file));
+    }
+    REGISTRY_KEYS
+        .iter()
+        .map(|(key, _)| format!(r"{key}\{HOST_NAME}"))
+        .filter(|key| registry::delete(key))
+        .map(|key| format!(r"HKCU\{key}"))
+        .collect()
+}
+
+/// Default values of keys under `HKEY_CURRENT_USER`, through the registry API:
+/// spawning `reg.exe` fails once the window has dropped its console.
+#[cfg(windows)]
+mod registry {
+    use std::ffi::OsStr;
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Foundation::ERROR_SUCCESS;
+    use windows_sys::Win32::System::Registry::{
+        HKEY_CURRENT_USER, REG_SZ, RRF_RT_REG_SZ, RegDeleteTreeW, RegGetValueW, RegSetKeyValueW,
+    };
+
+    fn wide(s: &str) -> Vec<u16> {
+        OsStr::new(s).encode_wide().chain(Some(0)).collect()
+    }
+
+    pub fn read(key: &str) -> Option<String> {
+        let key = wide(key);
+        let mut buf = vec![0u16; 2048];
+        let mut bytes = (buf.len() * 2) as u32;
+        let status = unsafe {
+            RegGetValueW(
+                HKEY_CURRENT_USER,
+                key.as_ptr(),
+                std::ptr::null(),
+                RRF_RT_REG_SZ,
+                std::ptr::null_mut(),
+                buf.as_mut_ptr().cast(),
+                &mut bytes,
+            )
+        };
+        if status != ERROR_SUCCESS {
+            return None;
+        }
+        buf.truncate(bytes as usize / 2);
+        Some(String::from_utf16_lossy(&buf).trim_end_matches('\0').to_owned())
+    }
+
+    pub fn write(key: &str, value: &str) -> std::io::Result<()> {
+        let (key, value) = (wide(key), wide(value));
+        let status = unsafe {
+            RegSetKeyValueW(
+                HKEY_CURRENT_USER,
+                key.as_ptr(),
+                std::ptr::null(),
+                REG_SZ,
+                value.as_ptr().cast(),
+                (value.len() * 2) as u32,
+            )
+        };
+        if status == ERROR_SUCCESS { Ok(()) } else { Err(std::io::Error::from_raw_os_error(status as i32)) }
+    }
+
+    /// Whether the key existed and is now gone.
+    pub fn delete(key: &str) -> bool {
+        unsafe { RegDeleteTreeW(HKEY_CURRENT_USER, wide(key).as_ptr()) == ERROR_SUCCESS }
+    }
 }

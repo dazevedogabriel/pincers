@@ -1,12 +1,16 @@
 //! Renders `assets/logo.svg` into the PNG icons the browser extension needs.
-//! Run from the repository root: `cargo run --release --example extension_icons`.
+//! Run from the repository root:
+//! `cargo run --release --example extension_icons [-- <icons folder>]`
+//! (default: `../pincers-extension/src/icons`, the extension's repository
+//! checked out next to this one).
 
 use resvg::{tiny_skia, usvg};
 
 fn main() {
     let svg = std::fs::read("assets/logo.svg").expect("assets/logo.svg");
     let tree = usvg::Tree::from_data(&svg, &usvg::Options::default()).expect("invalid SVG");
-    let dir = std::path::Path::new("extension/src/icons");
+    let dir = std::env::args().nth(1).unwrap_or_else(|| "../pincers-extension/src/icons".into());
+    let dir = std::path::Path::new(&dir);
     std::fs::create_dir_all(dir).unwrap();
     for side in [16u32, 32, 48, 96, 128] {
         let mut pix = tiny_skia::Pixmap::new(side, side).unwrap();

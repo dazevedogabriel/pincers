@@ -1,5 +1,1 @@
 /target
-# Built extension packages (extension/build.ps1)
-/extension/dist
-# Copy of the IDM extension used for the analysis (Tonec's code, not ours)
-/extension/internetdownloadmanager

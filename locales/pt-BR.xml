@@ -56,7 +56,7 @@
   <string key="action.retry">Tentar novamente</string>
   <string key="action.open_file">Abrir arquivo</string>
   <string key="action.open_folder">Abrir pasta</string>
-  <string key="action.remove_tip">Remover da lista (os arquivos ficam no disco)</string>
+  <string key="action.remove_tip">Remover da lista (um download inacabado também perde o arquivo parcial; arquivos concluídos ficam no disco)</string>
 
   <!-- Painel de detalhes -->
   <string key="detail.copy_url_tip">Clique para copiar a URL</string>
@@ -135,7 +135,7 @@
 
   <!-- Linha de comando -->
   <string key="cli.about">Pincers: baixa arquivos em várias partes ao mesmo tempo, como o IDM. Sem URL (ou com `gui`), abre a janela.</string>
-  <string key="cli.url">URL do arquivo (omita, ou use `gui`, para abrir a janela; `register` liga o Pincers às extensões do navegador)</string>
+  <string key="cli.url">URL do arquivo (omita, ou use `gui`, para abrir a janela; `register` / `unregister` ligam / desligam o Pincers das extensões do navegador)</string>
   <string key="cli.connections">Número máximo de conexões simultâneas (o IDM usa 8)</string>
   <string key="cli.output">Pasta de destino</string>
   <string key="cli.limit">Limite de velocidade, ex.: 500K, 2M</string>
@@ -144,5 +144,6 @@
   <string key="cli.done">✔ {path}  ({size} em {secs}s, média {speed}/s)</string>
   <string key="cli.paused">⏸ Pausado. Rode o mesmo comando para retomar. ({error})</string>
   <string key="cli.bad_limit">limite inválido: {value}</string>
-  <string key="cli.registered">Pronto: as extensões do Chrome/Opera/Firefox já conseguem falar com o Pincers.</string>
+  <string key="cli.registered">Pronto: as extensões do Chrome/Opera/Firefox já conseguem falar com o Pincers. (Abrir a janela do Pincers também faz isso.)</string>
+  <string key="cli.unregistered">Removido: as extensões do navegador não iniciam mais o Pincers (até a janela dele ser aberta de novo).</string>
 </language>
